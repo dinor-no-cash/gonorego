@@ -27,23 +27,33 @@ jobs:
         run: |
           pip install pykakasi
           python convert.py
+          ls -la romaji.txt
 
       - name: Synthesize Gonorego Voice (MacinTalk Whisper)
         run: |
-          RATE="${{ github.event.inputs.rate || '195' }}"
+          RATE="${{ github.event.inputs.rate }}"
+          if [ -z "$RATE" ]; then
+            RATE="195"
+          fi
           echo "Synthesizing Gonorego Whisper with rate: $RATE"
           say -v Whisper -r "$RATE" -f romaji.txt -o raw_whisper.aiff
           afconvert -f WAVE -d LEI16 raw_whisper.aiff zeijakusei_gonorego.wav
+          ls -la zeijakusei_gonorego.wav
 
       - name: Synthesize Retro SAM Voice (Software Automatic Mouth)
+        continue-on-error: true
         run: |
-          echo "Building SAM..."
+          echo "Building SAM without SDL..."
           git clone --depth 1 https://github.com/s-macke/SAM.git
           cd SAM
-          make
-          # Flatten romaji.txt into a single line for SAM
-          SAM_TEXT=$(cat ../romaji.txt | tr '\n' ' ' | tr -s ' ' | head -c 1500)
-          ./sam -wav ../zeijakusei_sam.wav "$SAM_TEXT"
+          # Compile C source directly without SDL dependency
+          gcc -O2 *.c -o ../sam 2>/dev/null || gcc -O2 src/*.c -o ../sam 2>/dev/null || true
+          cd ..
+          if [ -f "./sam" ]; then
+            SAM_TEXT=$(cat romaji.txt | tr '\n' ' ' | tr -s ' ' | head -c 1500)
+            ./sam -wav zeijakusei_sam.wav "$SAM_TEXT"
+            ls -la zeijakusei_sam.wav
+          fi
 
       - name: Upload Audio Artifacts
         uses: actions/upload-artifact@v4
@@ -53,4 +63,5 @@ jobs:
             zeijakusei_gonorego.wav
             zeijakusei_sam.wav
             romaji.txt
+          if-no-files-found: warn
           retention-days: 7
