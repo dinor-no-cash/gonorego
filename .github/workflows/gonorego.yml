@@ -4,12 +4,6 @@ on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
-    inputs:
-      rate:
-        description: 'Whisper 話速 (180〜210 推奨)'
-        required: false
-        default: '195'
-        type: string
 
 jobs:
   synthesize:
@@ -23,61 +17,47 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install FFmpeg via Homebrew
+      - name: Prepare Clean Romaji Script
         run: |
-          brew install ffmpeg
-
-      - name: Install dependencies & Convert Japanese to Romaji
-        run: |
-          pip install pykakasi
           python convert.py
           ls -la romaji.txt
 
-      - name: Synthesize Gonorego Voice & Audio Mastering
+      - name: Synthesize 4 Gonorego Pitch & Speed Patterns
         run: |
-          RATE="${{ github.event.inputs.rate }}"
-          if [ -z "$RATE" ]; then
-            RATE="195"
-          fi
-          echo "Synthesizing Gonorego Whisper with rate: $RATE"
-          
-          # 1. 原音生成 (AIFF -> WAV)
-          say -v Whisper -r "$RATE" -f romaji.txt -o raw_whisper.aiff
-          afconvert -f WAVE -d LEI16 raw_whisper.aiff gonorego_raw.wav
+          # 1. 【本命】ドス・無機質フラット・適正速度 (rate 140, pbas -10, pmod 0)
+          echo -n "[[rate 140]][[pbas -10]][[pmod 0]]" > p1.txt
+          cat romaji.txt >> p1.txt
+          say -v Whisper -f p1.txt -o p1.aiff
+          afconvert -f WAVE -d LEI16 p1.aiff 01_authentic_gonorego_rate140_pbas-10.wav
 
-          # 2. 「どす」を利かせた低音強化・ピッチシフトマスタリング (Heavy Dosu Master)
-          ffmpeg -y -i gonorego_raw.wav \
-            -af "asetrate=44100*0.88,atempo=1.136,bass=g=10:f=150,equalizer=f=350:t=q:w=1:g=3,compand=attacks=0.01:decays=0.1:points=-60/-60|-20/-6|0/0,volume=2.2" \
-            gonorego_heavy_dosu.wav
+          # 2. 【重厚・超低音ドス】(rate 130, pbas -16, pmod 0)
+          echo -n "[[rate 130]][[pbas -16]][[pmod 0]]" > p2.txt
+          cat romaji.txt >> p2.txt
+          say -v Whisper -f p2.txt -o p2.aiff
+          afconvert -f WAVE -d LEI16 p2.aiff 02_extra_deep_menacing_rate130_pbas-16.wav
 
-          # 3. 当時のFlash黄金期レトロ版 (22050Hz Mono / ローファイ感の再現)
-          ffmpeg -y -i gonorego_heavy_dosu.wav -ar 22050 -ac 1 gonorego_flash_retro.wav
+          # 3. 【激昂早口・ドス】(rate 155, pbas -10, pmod 0)
+          echo -n "[[rate 155]][[pbas -10]][[pmod 0]]" > p3.txt
+          cat romaji.txt >> p3.txt
+          say -v Whisper -f p3.txt -o p3.aiff
+          afconvert -f WAVE -d LEI16 p3.aiff 03_fast_rant_dosu_rate155_pbas-10.wav
 
-          ls -la gonorego_*.wav
+          # 4. 【落ち着き・明瞭さ重視】(rate 135, pbas -6, pmod 0)
+          echo -n "[[rate 135]][[pbas -6]][[pmod 0]]" > p4.txt
+          cat romaji.txt >> p4.txt
+          say -v Whisper -f p4.txt -o p4.aiff
+          afconvert -f WAVE -d LEI16 p4.aiff 04_clear_paced_rate135_pbas-6.wav
 
-      - name: Synthesize Retro SAM Voice (Software Automatic Mouth)
-        continue-on-error: true
-        run: |
-          echo "Building SAM without SDL..."
-          git clone --depth 1 https://github.com/s-macke/SAM.git
-          cd SAM
-          gcc -O2 *.c -o ../sam 2>/dev/null || gcc -O2 src/*.c -o ../sam 2>/dev/null || true
-          cd ..
-          if [ -f "./sam" ]; then
-            SAM_TEXT=$(cat romaji.txt | tr '\n' ' ' | tr -s ' ' | head -c 1500)
-            ./sam -wav zeijakusei_sam.wav "$SAM_TEXT"
-            ls -la zeijakusei_sam.wav
-          fi
+          ls -la *.wav
 
       - name: Upload Audio Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: zeijakusei-gonorego-voices
+          name: gonorego-tuned-voices
           path: |
-            gonorego_heavy_dosu.wav
-            gonorego_flash_retro.wav
-            gonorego_raw.wav
-            zeijakusei_sam.wav
+            01_authentic_gonorego_rate140_pbas-10.wav
+            02_extra_deep_menacing_rate130_pbas-16.wav
+            03_fast_rant_dosu_rate155_pbas-10.wav
+            04_clear_paced_rate135_pbas-6.wav
             romaji.txt
-          if-no-files-found: warn
           retention-days: 7

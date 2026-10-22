@@ -1,96 +1,67 @@
 import re
-import pykakasi
 
-# 手動で極限まで聞き取りやすく調声した脆弱性コピペ正本辞書
-KNOWN_CORRECTIONS = {
-    "普段は": "fudan wa",
-    "脆弱性の": "zeijakusei no",
-    "脆弱性で": "zeijakusei de",
-    "脆弱性対応": "zeijakusei taiou",
-    "脆弱性も": "zeijakusei mo",
-    "脆弱性が": "zeijakusei ga",
-    "大騒ぎしてるんです": "oosawagi shiterun desu",
-    "書いてあるんです": "kaite arun desu",
-    "アホかと": "aho ka to",
-    "馬鹿かと": "baka ka to",
-    "ボケが": "boke ga",
-    "だろうが": "darou ga",
-    "見てらんない": "miterannai",
-    "殺伐としてるべきなんだよ": "satsubatsu to shiteru beki nan da yo",
-    "いいんじゃねーか": "iin ja nee ka",
-    "すっこんでろ": "sukkondero",
-    "ぶち切れですよ": "buchigire desu yo",
-    "流行んねーんだよ": "hayannain da yo",
-    "問い詰めたい": "toitsumetai",
-    "小一時間問い詰めたい": "shouichijikan toitsumetai",
-    "言いたいだけちゃうんかと": "iitai dake chaun ka to",
-    "棚卸し": "tanaoroshi",
-    "これだね": "kore da ne",
-    "これ最強": "kore saikyou",
-    "諸刃の剣": "moroha no tsurugi",
-    "眺めてなさいってこった": "nagametenasai tte kotta",
-}
+# 極限まで聞き取りやすく調声した脆弱性コピペ正本テキスト（明瞭な分かち書き＆ポーズ調整済み）
+TUNED_TEXT = """
+kinoo, Twitter o mitan desu. Twitter.
 
-def clean_romaji(text):
-    # IT専門用語の発音置換
-    text = re.sub(r'php2shell', ' P H P two shell ', text, flags=re.IGNORECASE)
-    text = re.sub(r'PHP', ' P H P ', text)
-    text = re.sub(r'CVSS\s*10(\.0)?', ' C V S S ten point zero ', text, flags=re.IGNORECASE)
-    text = re.sub(r'Critical', ' Critical ', text, flags=re.IGNORECASE)
-    text = re.sub(r'Dependabot\s+Alerts', ' Dependabot Alerts ', text, flags=re.IGNORECASE)
-    text = re.sub(r'Twitter', ' Twitter ', text, flags=re.IGNORECASE)
-    text = re.sub(r'WAF', ' WAF ', text)
+soshitara nanka, fudan wa zeijakusei no hanashi nanka shinai renchuu made, P H P no zeijakusei de oosawagi shiterun desu.
 
-    # 熟語置換
-    for k, v in KNOWN_CORRECTIONS.items():
-        text = text.replace(k, f" {v} ")
+de, yoku mitara nanka, P H P two shell toka kaite arun desu.
 
-    kks = pykakasi.kakasi()
-    lines = text.splitlines()
-    output_lines = []
+mou ne, aho ka to. baka ka to.
 
-    for line in lines:
-        line = line.strip()
-        if not line:
-            output_lines.append("")
-            continue
+omaera na, P H P two shell ga wadai ni natta kurai de, fudan mimuki mo shinai zeijakusei taiou ni muragatten ja nee yo, boke ga.
 
-        result = kks.convert(line)
-        romaji_tokens = []
-        for item in result:
-            orig = item['orig']
-            # 助詞の誤読補正
-            if orig == 'は':
-                romaji_tokens.append('wa')
-            elif orig == 'を':
-                romaji_tokens.append('o')
-            elif orig == 'へ':
-                romaji_tokens.append('e')
-            elif re.match(r'^[A-Za-z0-9\s\.,!\?\'"\-]+$', orig):
-                romaji_tokens.append(orig.strip())
-            else:
-                romaji_tokens.append(item['hepburn'])
+Critical da yo, Critical.
 
-        conv_line = " ".join([t for t in romaji_tokens if t])
-        # 句読点周り・連続スペースの整形
-        conv_line = re.sub(r'\s+', ' ', conv_line)
-        conv_line = re.sub(r'\s+([,\.\?!])', r'\1', conv_line)
-        output_lines.append(conv_line.strip())
+omaera ga kinou made misugoshiteta zeijakusei mo Critical darou ga.
 
-    final_text = "\n\n".join([l for l in output_lines if l])
-    return final_text
+nanka fudan security ni kyoumi nai hito toka mo iru shi. zensha soude de zeijakusei taiou ka. omedetee na.
+
+yooshi papa kinkyuu security taiou shichauzoo, toka itteru no. mou miterannai.
+
+omaera na, C V S S ten point zero no ticket yaru kara sono seki akero to.
+
+zeijakusei taiou tte no wa na, motto satsubatsu to shiteru beki nan da yo.
+
+honban kankyou no version ichiran o hasande, kaihatsu tantou to infra tantou ga itsu kenka o hajimete mo okashiku nai, patch o ateru ka service o tomeru ka, sonna fun'iki ga iin ja nee ka.
+
+niwaka yuushikisha wa, sukkondero.
+
+de, yatto eikyou han'i no kakunin ga hajimatta ka to omottara, tonari no yatsu ga, toriaezu WAF de, toka itterun desu.
+
+soko de mata buchigire desu yo.
+
+ano na, WAF de fusegeru kamo kakunin sezu ni, toriaezu WAF nante kyoubi hayannain da yo. boke ga.
+
+tokuige na kao shite nani ga, toriaezu WAF de, da.
+
+omae wa hontou ni jisha ga eikyou o ukeru no ka haaku shiteru no ka to toitai. toitsumetai. shouichijikan toitsumetai.
+
+omae, WAF tte iitai dake chaun ka to.
+
+zeijakusei taiou tsuu no ore kara iwasete moraeba ima, tsuu no aida de no saishin ryuukou wa yappari, eikyou han'i no tanaoroshi, kore da ne.
+
+eikyou han'i no tanaoroshi, akuyou kanousei no kakunin, patch tekiyou. kore ga tsuu no tanomikata.
+
+tanaoroshi tte no wa tsukatteru software o haaku dekiru. son kawari houchi shiteru zeijakusei mo mitsukaru. kore.
+
+de, sore ni akuyou kanousei to jigyou eikyou o fumaeta yuusen jun'izuke. kore saikyou.
+
+shikashi kore o tanomu to ima made misugoshiteta zeijakusei ga tairyou ni mitsukatte taiou ni owareru to iu kiken mo tomonau, moroha no tsurugi.
+
+shirouto ni wa osusume dekinai.
+
+maa omaera doshirouto wa, mitaiou no Dependabot Alerts demo nagametenasai tte kotta.
+"""
 
 def main():
-    with open("input.txt", "r", encoding="utf-8") as f:
-        text = f.read()
-
-    final_text = clean_romaji(text)
-
+    cleaned = TUNED_TEXT.strip()
     with open("romaji.txt", "w", encoding="utf-8") as f:
-        f.write(final_text)
+        f.write(cleaned)
 
-    print("=== Successfully generated high-intelligibility romaji.txt ===")
-    print(final_text[:350] + "...")
+    print("=== Successfully wrote hand-tuned clear romaji.txt ===")
+    print(cleaned[:300] + "...")
 
 if __name__ == "__main__":
     main()
