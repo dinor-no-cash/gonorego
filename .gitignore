@@ -1,6 +1,7 @@
 *.aiff
-*.wav
-*.mp3
 __pycache__/
 SAM/
-romaji.txt
+p1.txt
+p2.txt
+p3.txt
+p4.txt
