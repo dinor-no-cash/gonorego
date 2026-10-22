@@ -17,36 +17,30 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Prepare Clean Romaji Script
+      - name: Prepare Clean Phonetic Script
         run: |
           python convert.py
           ls -la romaji.txt
 
-      - name: Synthesize 4 Gonorego Pitch & Speed Patterns
+      - name: Synthesize Tuned Gonorego Patterns
         run: |
-          # 1. 【本命】ドス・無機質フラット・適正速度 (rate 140, pbas -10, pmod 0)
-          echo -n "[[rate 140]][[pbas -10]][[pmod 0]]" > p1.txt
+          # 1. 【本命】ドス・無機質フラット・適正速度 (rate 138, pbas -10, pmod 0)
+          echo -n "[[rate 138]][[pbas -10]][[pmod 0]]" > p1.txt
           cat romaji.txt >> p1.txt
           say -v Whisper -f p1.txt -o p1.aiff
-          afconvert -f WAVE -d LEI16 p1.aiff 01_authentic_gonorego_rate140_pbas-10.wav
+          afconvert -f WAVE -d LEI16 p1.aiff 01_authentic_gonorego_rate138_pbas-10.wav
 
-          # 2. 【重厚・超低音ドス】(rate 130, pbas -16, pmod 0)
-          echo -n "[[rate 130]][[pbas -16]][[pmod 0]]" > p2.txt
+          # 2. 【超重厚ドス】(rate 128, pbas -15, pmod 0)
+          echo -n "[[rate 128]][[pbas -15]][[pmod 0]]" > p2.txt
           cat romaji.txt >> p2.txt
           say -v Whisper -f p2.txt -o p2.aiff
-          afconvert -f WAVE -d LEI16 p2.aiff 02_extra_deep_menacing_rate130_pbas-16.wav
+          afconvert -f WAVE -d LEI16 p2.aiff 02_extra_deep_rate128_pbas-15.wav
 
-          # 3. 【激昂早口・ドス】(rate 155, pbas -10, pmod 0)
-          echo -n "[[rate 155]][[pbas -10]][[pmod 0]]" > p3.txt
+          # 3. 【明瞭まくし立て】(rate 145, pbas -8, pmod 0)
+          echo -n "[[rate 145]][[pbas -8]][[pmod 0]]" > p3.txt
           cat romaji.txt >> p3.txt
           say -v Whisper -f p3.txt -o p3.aiff
-          afconvert -f WAVE -d LEI16 p3.aiff 03_fast_rant_dosu_rate155_pbas-10.wav
-
-          # 4. 【落ち着き・明瞭さ重視】(rate 135, pbas -6, pmod 0)
-          echo -n "[[rate 135]][[pbas -6]][[pmod 0]]" > p4.txt
-          cat romaji.txt >> p4.txt
-          say -v Whisper -f p4.txt -o p4.aiff
-          afconvert -f WAVE -d LEI16 p4.aiff 04_clear_paced_rate135_pbas-6.wav
+          afconvert -f WAVE -d LEI16 p3.aiff 03_moderate_rate145_pbas-8.wav
 
           ls -la *.wav
 
@@ -55,9 +49,8 @@ jobs:
         with:
           name: gonorego-tuned-voices
           path: |
-            01_authentic_gonorego_rate140_pbas-10.wav
-            02_extra_deep_menacing_rate130_pbas-16.wav
-            03_fast_rant_dosu_rate155_pbas-10.wav
-            04_clear_paced_rate135_pbas-6.wav
+            01_authentic_gonorego_rate138_pbas-10.wav
+            02_extra_deep_rate128_pbas-15.wav
+            03_moderate_rate145_pbas-8.wav
             romaji.txt
           retention-days: 7

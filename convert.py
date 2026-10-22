@@ -1,67 +1,66 @@
-import re
+# 英語音声合成（MacinTalk Whisper）の音素規則に完全合致させた英語当て字原稿
+# 「shi」が二重母音「シャイ/サイ」にならず確実に「シ」と発音されるよう「shee」等の音素スペルを採用
+PHONETIC_SCRIPT = """
+Keenoh, Twitter oh meetan desu. Twitter.
 
-# 極限まで聞き取りやすく調声した脆弱性コピペ正本テキスト（明瞭な分かち書き＆ポーズ調整済み）
-TUNED_TEXT = """
-kinoo, Twitter o mitan desu. Twitter.
+Sohsheetarah nankah, foodan wah zayjahkoosay noh hanashee nankah sheenai renchoo mahdeh, P H P noh zayjahkoosay deh ohsawagee sheeteroon desu.
 
-soshitara nanka, fudan wa zeijakusei no hanashi nanka shinai renchuu made, P H P no zeijakusei de oosawagi shiterun desu.
+Deh, yohkoo meetarah nankah, P H P two shell tohkah kayteh aron desu.
 
-de, yoku mitara nanka, P H P two shell toka kaite arun desu.
+Moh neh, ahhoh kah toh. Bahkah kah toh.
 
-mou ne, aho ka to. baka ka to.
+Ohmyrah nah, P H P two shell gah wahdai nee nahttah koorai deh, foodan meemookee moh sheenai zayjahkoosay tai-oh nee mooragatten jah nay yoh, bohkeh gah.
 
-omaera na, P H P two shell ga wadai ni natta kurai de, fudan mimuki mo shinai zeijakusei taiou ni muragatten ja nee yo, boke ga.
+Critical dah yoh, Critical.
 
-Critical da yo, Critical.
+Ohmyrah gah keenoh mahdeh meesoogoosheetaytah zayjahkoosay moh Critical dahroh gah.
 
-omaera ga kinou made misugoshiteta zeijakusei mo Critical darou ga.
+Nankah foodan security nee kyohmee nai heetoh tohkah moh eeru shee. Zenshah sohdeh deh zayjahkoosay tai-oh kah. Ohmehdehtay nah.
 
-nanka fudan security ni kyoumi nai hito toka mo iru shi. zensha soude de zeijakusei taiou ka. omedetee na.
+Yohshee pahpah keenkyoo security tai-oh sheechah-oo-zoh, tohkah eetteroo noh. Moh meeterannai.
 
-yooshi papa kinkyuu security taiou shichauzoo, toka itteru no. mou miterannai.
+Ohmyrah nah, C V S S ten point zero noh ticket yahroo kahrah sohnoh sehkee ahkehroh toh.
 
-omaera na, C V S S ten point zero no ticket yaru kara sono seki akero to.
+Zayjahkoosay tai-oh tteh noh wah nah, mohttoh sahtsoobahtsoo toh sheeteroo behkee nahn dah yoh.
 
-zeijakusei taiou tte no wa na, motto satsubatsu to shiteru beki nan da yo.
+Hohnbahn kahnkyoh noh version eecheerahn oh hahsandeh, kaihahtsoo tahntoh toh infra tahntoh gah eetsoo kenkah oh hahjeemehteh moh ohkasheekoo nai, patch oh ahtehroo kah service oh tohmehroo kah, sohnnah fooneekee gah een jah nay kah.
 
-honban kankyou no version ichiran o hasande, kaihatsu tantou to infra tantou ga itsu kenka o hajimete mo okashiku nai, patch o ateru ka service o tomeru ka, sonna fun'iki ga iin ja nee ka.
+Neewahkah yoosheekeeshah wah, sookkohndayroh.
 
-niwaka yuushikisha wa, sukkondero.
+Deh, yahttoh aykyoh hahnee noh kahkooneen gah hahjeemahttah kah toh ohmohttarah, tohnahree noh yahtsoo gah, tohree-ayzoo WAF deh, tohkah eetteroon desu.
 
-de, yatto eikyou han'i no kakunin ga hajimatta ka to omottara, tonari no yatsu ga, toriaezu WAF de, toka itterun desu.
+Sohkoh deh mahtah boocheegeereh desu yoh.
 
-soko de mata buchigire desu yo.
+Ahnoh nah, WAF deh foosehgehroo kahmoh kahkooneen sehzoo nee, tohree-ayzoo WAF nahnteh kyohbee hahyahn-nyn dah yoh. Bohkeh gah.
 
-ano na, WAF de fusegeru kamo kakunin sezu ni, toriaezu WAF nante kyoubi hayannain da yo. boke ga.
+Tohkooeegay nah kah-oh sheeteh nahnee gah, tohree-ayzoo WAF deh, dah.
 
-tokuige na kao shite nani ga, toriaezu WAF de, da.
+Ohmy wah hohntoh nee jeeshah gah aykyoh oh ookehroo noh kah hah-ahkoo sheeteroo noh kah toh toy-tai. Toytsoomehtai. Shoh-eechee-jeekahn toytsoomehtai.
 
-omae wa hontou ni jisha ga eikyou o ukeru no ka haaku shiteru no ka to toitai. toitsumetai. shouichijikan toitsumetai.
+Ohmy, WAF tteh eettai dahkeh chah-oon kah toh.
 
-omae, WAF tte iitai dake chaun ka to.
+Zayjahkoosay tai-oh tsoo noh ohreh kahrah eewahseh-teh mohryebah eemah, tsoo noh aida deh noh saisheen ryookoh wah yahppahree, aykyoh hahnee noh tahnah-ohrohshee, kohreh dah neh.
 
-zeijakusei taiou tsuu no ore kara iwasete moraeba ima, tsuu no aida de no saishin ryuukou wa yappari, eikyou han'i no tanaoroshi, kore da ne.
+Aykyoh hahnee noh tahnah-ohrohshee, ahkooyoh kahnoh-say noh kahkooneen, patch tehkeeyoh. Kohreh gah tsoo noh tahnohmee-kahtah.
 
-eikyou han'i no tanaoroshi, akuyou kanousei no kakunin, patch tekiyou. kore ga tsuu no tanomikata.
+Tahnah-ohrohshee tteh noh wah tsookaht-tehroo software oh hah-ahkoo dehkeeroo. Sohn kahwahree hohchee sheeteroo zayjahkoosay moh meetsookahroo. Kohreh.
 
-tanaoroshi tte no wa tsukatteru software o haaku dekiru. son kawari houchi shiteru zeijakusei mo mitsukaru. kore.
+Deh, sohreh nee ahkooyoh kahnoh-say toh jeegyoh aykyoh oh foomah-aytah yoosen joon-ee-zookeh. Kohreh sai-kyoh.
 
-de, sore ni akuyou kanousei to jigyou eikyou o fumaeta yuusen jun'izuke. kore saikyou.
+Sheekahshee kohreh oh tahnohmoo toh eemah mahdeh meesoogoosheetaytah zayjahkoosay gah tairyoh nee meetsookaht-teh tai-oh nee ohwahrehroo toh eeyoo keeken moh tohmohnah-oo, mohrohhah noh tsooroogee.
 
-shikashi kore o tanomu to ima made misugoshiteta zeijakusei ga tairyou ni mitsukatte taiou ni owareru to iu kiken mo tomonau, moroha no tsurugi.
+Sheerohtoh nee wah ohsoosohmeh dehkeenai.
 
-shirouto ni wa osusume dekinai.
-
-maa omaera doshirouto wa, mitaiou no Dependabot Alerts demo nagametenasai tte kotta.
+Mah-ah ohmyrah doh-sheerohtoh wah, meetai-oh noh Dependabot Alerts dehmoh nahgahmeh-tehnahsai tteh koht-tah.
 """
 
 def main():
-    cleaned = TUNED_TEXT.strip()
+    cleaned = PHONETIC_SCRIPT.strip()
     with open("romaji.txt", "w", encoding="utf-8") as f:
         f.write(cleaned)
 
-    print("=== Successfully wrote hand-tuned clear romaji.txt ===")
-    print(cleaned[:300] + "...")
+    print("=== Successfully generated phonetically tuned romaji.txt ===")
+    print(cleaned[:350] + "...")
 
 if __name__ == "__main__":
     main()
