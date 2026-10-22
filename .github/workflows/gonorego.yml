@@ -23,6 +23,10 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install FFmpeg via Homebrew
+        run: |
+          brew install ffmpeg
+
       - name: Install dependencies & Convert Japanese to Romaji
         run: |
           pip install pykakasi
@@ -42,10 +46,6 @@ jobs:
           afconvert -f WAVE -d LEI16 raw_whisper.aiff gonorego_raw.wav
 
           # 2. 「どす」を利かせた低音強化・ピッチシフトマスタリング (Heavy Dosu Master)
-          # - ピッチを12%低音化 (asetrate=44100*0.88)
-          # - 早口の怒涛感を維持 (atempo=1.136)
-          # - 150Hzの低域胴鳴りを+10dB強調 (bass=g=10)
-          # - 音圧とささやきの芯を前面に出すコンプレッサー & 増幅
           ffmpeg -y -i gonorego_raw.wav \
             -af "asetrate=44100*0.88,atempo=1.136,bass=g=10:f=150,equalizer=f=350:t=q:w=1:g=3,compand=attacks=0.01:decays=0.1:points=-60/-60|-20/-6|0/0,volume=2.2" \
             gonorego_heavy_dosu.wav
