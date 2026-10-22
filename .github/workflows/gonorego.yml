@@ -29,16 +29,31 @@ jobs:
           python convert.py
           ls -la romaji.txt
 
-      - name: Synthesize Gonorego Voice (MacinTalk Whisper)
+      - name: Synthesize Gonorego Voice & Audio Mastering
         run: |
           RATE="${{ github.event.inputs.rate }}"
           if [ -z "$RATE" ]; then
             RATE="195"
           fi
           echo "Synthesizing Gonorego Whisper with rate: $RATE"
+          
+          # 1. 原音生成 (AIFF -> WAV)
           say -v Whisper -r "$RATE" -f romaji.txt -o raw_whisper.aiff
-          afconvert -f WAVE -d LEI16 raw_whisper.aiff zeijakusei_gonorego.wav
-          ls -la zeijakusei_gonorego.wav
+          afconvert -f WAVE -d LEI16 raw_whisper.aiff gonorego_raw.wav
+
+          # 2. 「どす」を利かせた低音強化・ピッチシフトマスタリング (Heavy Dosu Master)
+          # - ピッチを12%低音化 (asetrate=44100*0.88)
+          # - 早口の怒涛感を維持 (atempo=1.136)
+          # - 150Hzの低域胴鳴りを+10dB強調 (bass=g=10)
+          # - 音圧とささやきの芯を前面に出すコンプレッサー & 増幅
+          ffmpeg -y -i gonorego_raw.wav \
+            -af "asetrate=44100*0.88,atempo=1.136,bass=g=10:f=150,equalizer=f=350:t=q:w=1:g=3,compand=attacks=0.01:decays=0.1:points=-60/-60|-20/-6|0/0,volume=2.2" \
+            gonorego_heavy_dosu.wav
+
+          # 3. 当時のFlash黄金期レトロ版 (22050Hz Mono / ローファイ感の再現)
+          ffmpeg -y -i gonorego_heavy_dosu.wav -ar 22050 -ac 1 gonorego_flash_retro.wav
+
+          ls -la gonorego_*.wav
 
       - name: Synthesize Retro SAM Voice (Software Automatic Mouth)
         continue-on-error: true
@@ -46,7 +61,6 @@ jobs:
           echo "Building SAM without SDL..."
           git clone --depth 1 https://github.com/s-macke/SAM.git
           cd SAM
-          # Compile C source directly without SDL dependency
           gcc -O2 *.c -o ../sam 2>/dev/null || gcc -O2 src/*.c -o ../sam 2>/dev/null || true
           cd ..
           if [ -f "./sam" ]; then
@@ -60,7 +74,9 @@ jobs:
         with:
           name: zeijakusei-gonorego-voices
           path: |
-            zeijakusei_gonorego.wav
+            gonorego_heavy_dosu.wav
+            gonorego_flash_retro.wav
+            gonorego_raw.wav
             zeijakusei_sam.wav
             romaji.txt
           if-no-files-found: warn
