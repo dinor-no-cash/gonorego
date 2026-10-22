@@ -1,0 +1,56 @@
+name: Generate Gonorego & Retro Voice
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      rate:
+        description: 'Whisper 話速 (180〜210 推奨)'
+        required: false
+        default: '195'
+        type: string
+
+jobs:
+  synthesize:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies & Convert Japanese to Romaji
+        run: |
+          pip install pykakasi
+          python convert.py
+
+      - name: Synthesize Gonorego Voice (MacinTalk Whisper)
+        run: |
+          RATE="${{ github.event.inputs.rate || '195' }}"
+          echo "Synthesizing Gonorego Whisper with rate: $RATE"
+          say -v Whisper -r "$RATE" -f romaji.txt -o raw_whisper.aiff
+          afconvert -f WAVE -d LEI16 raw_whisper.aiff zeijakusei_gonorego.wav
+
+      - name: Synthesize Retro SAM Voice (Software Automatic Mouth)
+        run: |
+          echo "Building SAM..."
+          git clone --depth 1 https://github.com/s-macke/SAM.git
+          cd SAM
+          make
+          # Flatten romaji.txt into a single line for SAM
+          SAM_TEXT=$(cat ../romaji.txt | tr '\n' ' ' | tr -s ' ' | head -c 1500)
+          ./sam -wav ../zeijakusei_sam.wav "$SAM_TEXT"
+
+      - name: Upload Audio Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zeijakusei-gonorego-voices
+          path: |
+            zeijakusei_gonorego.wav
+            zeijakusei_sam.wav
+            romaji.txt
+          retention-days: 7

@@ -1,0 +1,6 @@
+*.aiff
+*.wav
+*.mp3
+__pycache__/
+SAM/
+romaji.txt
