@@ -1,51 +1,51 @@
-Keenoh, Twitter oh meetan desu. Twitter.
+Kino, Twitter mitan desu. Twitter.
 
-Sohsheetarah nankah, foodan wah zayjahkoosay noh hanashee nankah [[inpt PHON]]SIY nAY[[inpt TEXT]] renchoo mahdeh, P H P noh zayjahkoosay deh ohsawagee sheeteroon desu.
+Soshitara nanka, fudan wa zeijakusei no hanashi nanka she nye renchu made, P H P no zeijakusei de osawagi shiterun desu.
 
-Deh, yohkoo meetarah nankah, P H P two shell tohkah kye-teh aron desu.
+De, yoku mitara nanka, php2shell toka kaite arun desu.
 
-Moh neh, ahhoh kah toh. Bahkah kah toh.
+Mou ne, aho ka to. Baka ka to.
 
-Ohmyrah nah, P H P two shell gah wah-dye nee nahttah koorai deh, foodan meemookee moh [[inpt PHON]]SIY nAY[[inpt TEXT]] zayjahkoosay tye-oh nee mooragatten jah nay yoh, bohkeh gah.
+Omaera na, php2shell ga wadai ni natta kurai de, fudan mimuki mo she nye zeijakusei taio ni muragatten ja ne yo, boke ga.
 
-Critical dah yoh, Critical.
+Critical da yo, Critical.
 
-Ohmyrah gah keenoh mahdeh meesoogoosheetaytah zayjahkoosay moh Critical dahroh gah.
+Omaera ga kino made misugoshiteta zeijakusei mo Critical darou ga.
 
-Nankah foodan security nee kyohmee [[inpt PHON]]nAY[[inpt TEXT]] heetoh tohkah moh eeru shee. Zenshah sohdeh deh zayjahkoosay tye-oh kah. Ohmehdehtay nah.
+Nanka fudan security ni kyomi nai hito toka mo iru shi. Zensha soude de zeijakusei taio ka. Omedete na.
 
-Yohshee pahpah keenkyoo security tye-oh sheechah-oo-zoh, tohkah eetteroo noh. Moh meeterahn [[inpt PHON]]nAY[[inpt TEXT]].
+Yoshi papa kinkyu security taio shichau zo, toka itteru no. Mou miterannai.
 
-Ohmyrah nah, C V S S ten point zero noh ticket yahroo kahrah sohnoh sehkee ahkehroh toh.
+Omaera na, C V S S ten point zero no ticket yaru kara sono seki akero to.
 
-Zayjahkoosay tye-oh tteh noh wah nah, mohttoh sahtsoobahtsoo toh sheeteroo behkee nahn dah yoh.
+Zeijakusei taio tte no wa na, motto satsubatsu to shiteru beki nan da yo.
 
-Hohnbahn kahnkyoh noh version eecheerahn oh hahsandeh, kye-hahtsoo tahntoh toh infra tahntoh gah eetsoo kenkah oh hahjeemehteh moh ohkasheekoo [[inpt PHON]]nAY[[inpt TEXT]], patch oh ahtehroo kah service oh tohmehroo kah, sohnnah fooneekee gah een jah nay kah.
+Honban kankyo no version ichiran o hasande, kaihatsu tanto to infra tanto ga itsu kenka o hajimete mo okashiku nai, patch o ateru ka service o tomeru ka, sonna funiki ga iin ja ne ka.
 
-Neewahkah yoosheekeeshah wah, sookkohndayroh.
+Niwaka yushikisha wa, sukkondero.
 
-Deh, yahttoh aykyoh hahnee noh kahkooneen gah hahjeemahttah kah toh ohmohttarah, tohnahree noh yahtsoo gah, tohree-ayzoo [[inpt PHON]]wAA f[[inpt TEXT]] deh, tohkah eetteroon desu.
+De, yatto eikyo hani no kakunin ga hajimatta ka to omottara, tonari no yatsu ga, toriaezu waff de, toka itterun desu.
 
-Sohkoh deh mahtah boocheegeereh desu yoh.
+Soko de mata buchigire desu yo.
 
-Ahnoh nah, [[inpt PHON]]wAA f[[inpt TEXT]] deh foosehgehroo kahmoh kahkooneen sehzoo nee, tohree-ayzoo [[inpt PHON]]wAA f[[inpt TEXT]] nahnteh kyohbee hahyahn-nyn dah yoh. Bohkeh gah.
+Ano na, waff de fusegeru kamo kakunin sezu ni, toriaezu waff nante kyobi hayannain da yo. Boke ga.
 
-Tohkooeegay nah kah-oh sheeteh nahnee gah, tohree-ayzoo [[inpt PHON]]wAA f[[inpt TEXT]] deh, dah.
+Tokuige na kao shite nani ga, toriaezu waff de, da.
 
-Ohmy wah hohntoh nee jeeshah gah aykyoh oh ookehroo noh kah hah-ahkoo sheeteroo noh kah toh [[inpt PHON]]tOY tAY[[inpt TEXT]]. [[inpt PHON]]tOY tsUW mEH tAY[[inpt TEXT]]. Shoh-eechee-jeekahn [[inpt PHON]]tOY tsUW mEH tAY[[inpt TEXT]].
+Omae wa honto ni jisha ga eikyo o ukeru no ka haaku shiteru no ka to toitai. Toitsumetai. Shoichijikan toitsumetai.
 
-Ohmy, [[inpt PHON]]wAA f[[inpt TEXT]] tteh [[inpt PHON]]IY tAY[[inpt TEXT]] dahkeh chah-oon kah toh.
+Omae, waff tte iitai dake chaun ka to.
 
-Zayjahkoosay tye-oh tsoo noh ohreh kahrah eewahseh-teh mohryebah eemah, tsoo noh eye-dah deh noh [[inpt PHON]]sAY SIY n[[inpt TEXT]] ryookoh wah yahppahree, aykyoh hahnee noh tahnah-ohrohshee, kohreh dah neh.
+Zeijakusei taio tsu no ore kara iwasete moraeba ima, tsu no aida de no saishin ryuko wa yappari, eikyo hani no tanaoroshi, kore da ne.
 
-Aykyoh hahnee noh tahnah-ohrohshee, ahkooyoh kahnoh-say noh kahkooneen, patch tehkeeyoh. Kohreh gah tsoo noh tahnohmee-kahtah.
+Eikyo hani no tanaoroshi, akuyo kanosei no kakunin, patch tekiyo. Kore ga tsu no tanomikata.
 
-Tahnah-ohrohshee tteh noh wah tsookaht-tehroo software oh hah-ahkoo dehkeeroo. Sohn kahwahree hohchee sheeteroo zayjahkoosay moh meetsookahroo. Kohreh.
+Tanaoroshi tte no wa tsukatteru software o haaku dekiru. Son kawari hochi shiteru zeijakusei mo mitsukaru. Kore.
 
-Deh, sohreh nee ahkooyoh kahnoh-say toh jeegyoh aykyoh oh foomah-aytah yoosen joon-ee-zookeh. Kohreh [[inpt PHON]]sAY kYOW[[inpt TEXT]].
+De, sore ni akuyo kanosei to jigyo eikyo o fumaeta yusen junizuke. Kore saikyo.
 
-Sheekahshee kohreh oh tahnohmoo toh eemah mahdeh meesoogoosheetaytah zayjahkoosay gah tigh-ryoh nee meetsookaht-teh tye-oh nee ohwahrehroo toh eeyoo keeken moh tohmohnah-oo, mohrohhah noh tsooroogee.
+Shikashi kore o tanomu to ima made misugoshiteta zeijakusei ga tairyo ni mitsukatte taio ni owareru to iu kiken mo tomonau, moroha no tsurugi.
 
-Sheerohtoh nee wah ohsoosohmeh [[inpt PHON]]dEH kIY nAY[[inpt TEXT]].
+Shiroto ni wa osusume dekinai.
 
-Mah-ah ohmyrah doh-sheerohtoh wah, mee-tye-oh noh Dependabot Alerts dehmoh nahgahmeh-teh-nah [[inpt PHON]]sAY[[inpt TEXT]] tteh koht-tah.
+Ma omaera doshiroto wa, mitaio no Dependabot Alerts demo nagametenasai tte kotta.
