@@ -5,43 +5,58 @@ export interface Env {
   GITHUB_REPO: string;
   WORKFLOW_FILE: string;
   GITHUB_TOKEN?: string;
-  R2_PUBLIC_URL_BASE?: string;
 }
 
-// In-memory job store fallback if KV is not bound
-const memoryJobs = new Map<string, { status: string; video_url?: string; audio_url?: string; updated_at: number }>();
+// In-memory fallback
+const memoryJobs = new Map<string, any>();
+const memoryMedia = new Map<string, ArrayBuffer>();
 
-const SYSTEM_PROMPT = `
+const SCRIPT_GEN_PROMPT = `
+あなたは2000年代初頭の伝説的な2ちゃんねるFlash黄金期の作家（吉野家コピペ・ゴノレゴの作者）です。
+与えられた「テーマ」に基づいて、吉野家コピペの構文・リズム・怒涛の毒舌・熱弁を完全再現したパロディ台本を日本語で作成してください。
+
+【厳格な構文ルール】
+1. 書き出しは必ず「そんなことより聞いてくれよ１よ。」から始めること。
+2. その後、「昨日、[場所・対象]行ったんです。[場所・対象]。そしたらなんか[群がる人々や浅い行動]なんです。」と状況を説明すること。
+3. 中盤で必ず「もうね、アホかと。馬鹿かと。」と激怒し、「お前らな、[些細なきっかけ]くらいで普段見向きもしない[対象]に群がってんじゃねーよ、ボケが。」「よーしパパ[浅い意気込み]しちゃうぞー、とか言ってるの。もう見てらんない。」などの吉野家構文をふんだんに盛り込むこと。
+4. 「問いたい。問い詰めたい。小一時間問い詰めたい。お前、[流行語・安易な言葉]って言いたいだけちゃうんかと。」を必ず含めること。
+5. オチは必ず「[テーマ]通の俺から言わせてもらえば今、通の間での最新流行はやっぱり[マニアックな本質・プロのこだわり]、これだね。」から始めること。
+6. 「これが通の頼み方。」を述べた後、必ず「しかしこれをやると[大量のリスクやデメリット]という危険も伴う、諸刃の剣。素人にはおすすめしない。」を含めること。
+7. 最後の締めは必ず「まあお前らド素人は、[初心者向けの無難・ダサい代替案]でも[やってろ/眺めてなさい]ってこった。」で終わること。
+
+出力は余計な前置きや解説（「承知しました」「以下が台本です」など）を一切省き、セリフ本文のみを出力してください。
+`;
+
+const ROMAJI_CONVERT_PROMPT = `
 あなたはmacOSの音声合成エンジン「say -v Whisper」用のローマ字変換エンジニアです。
-入力された日本語テキストを、2000年代初頭のFlash「ゴノレゴ（吉野家コピペ）」の味・グルーヴ感を再現できるように、Whisper用のローマ字に変換してください。
+入力された日本語テキストの【意味やセリフの流れを一切変えず】、Whisperが滑らかかつ日本語らしく発音できるローマ字表記に変換してください。
 
-【必須ルール】
-1. 「まで」は英語のmade(メード)と誤読されないよう「ma deh」と書くこと。
-2. 「が」はジョージア州GA(ジー・エー)と誤読されないよう「gah」と書くこと。
-3. 「それ」「俺」「これ」は「soh reh」「oh reh」「koh reh」と書くこと。
-4. 「範囲」は「hah nee」と書くこと（honey誤読防止）。
-5. 「人」は「hee toh」と書くこと（hi誤読防止）。
-6. 「その」「そこ」は「soh noh」「Soh koh」と書くこと。
-7. 「小一時間」は「Koh ee chee jee kahn」と書くこと（こいちじかん）。
-8. 「ない」「たい」は「nye」「tie」と書くこと。
-9. 助詞: 「は」->「wah」, 「で」->「deh」, 「の」->「noh」, 「と」->「toh」, 「だ」->「dah」
-10. 文節や単語のまとまりを維持し、全文字にスペースを入れないこと。
+【最重要・英語誤読排除ルール】
+1. 「まで」->「ma deh」（英語過去形madeのメード誤読を排除）
+2. 「が」->「gah」（ジョージア州GAのジー・エー誤読を排除）
+3. 「それ」「俺」「これ」->「soh reh」「oh reh」「koh reh」
+4. 「範囲」->「hah nee」（honey誤読防止）
+5. 「人」->「hee toh」（hi誤読防止）
+6. 「その」「そこ」->「soh noh」「Soh koh」
+7. 「そん」->「Sohn」（son誤読防止）
+8. 「でも」->「deh moh」（demo誤読防止）
+9. 「とか」->「toh kah」（to誤読防止）
+10. 「ボケ」->「boh keh」（boke誤読防止）
+11. 「小一時間」->「Koh ee chee jee kahn」（こいちじかん）
+12. 「ない」「たい」->「nye」「tie」
+13. 「〜るん」->「roon」（run誤読防止）
+14. 助詞: 「は」->「wah」, 「で」->「deh」, 「の」->「noh」, 「と」->「toh」, 「だ」->「dah」
+15. 促音（っ）: 「naht tah」や「eet teh」のように重なりを表現。
+16. 単語の自然なまとまりを保ち、全文字にスペースを入れないこと。
 
-例：
-入力: 昨日、Twitter見たんです。Twitter。
-出力: Kee noh, Twitter mee tahn desu. Twitter.
-
-入力: 小一時間問い詰めたい。ボケが。
-出力: Koh ee chee jee kahn toh ee tsoo meh tie. Boh keh gah.
-
-解説やMarkdownの引用符は一切含めず、純粋な変換後ローマ字のみを出力してください。
+解説やMarkdown引用符は含めず、変換後のローマ字テキストのみを出力してください。
 `;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // Enable CORS
+    // CORS preflight
     if (request.method === "OPTIONS") {
       return new Response(null, {
         headers: {
@@ -57,7 +72,29 @@ export default {
       "Content-Type": "application/json",
     };
 
-    // API: Convert Japanese to Phonetic Romaji via Workers AI
+    // 1. API: Generate Script from Theme
+    if (url.pathname === "/api/generate-script" && request.method === "POST") {
+      try {
+        const { theme } = (await request.json()) as { theme: string };
+        if (!theme) {
+          return new Response(JSON.stringify({ error: "Theme is required" }), { status: 400, headers: corsHeaders });
+        }
+
+        const aiRes = await env.AI.run("@cf/qwen/qwen2.5-coder-32b-instruct", {
+          messages: [
+            { role: "system", content: SCRIPT_GEN_PROMPT.trim() },
+            { role: "user", content: `テーマ: ${theme}` },
+          ],
+        });
+
+        const script = aiRes.response.trim();
+        return new Response(JSON.stringify({ script }), { headers: corsHeaders });
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+      }
+    }
+
+    // 2. API: Convert Japanese to Phonetic Romaji
     if (url.pathname === "/api/convert" && request.method === "POST") {
       try {
         const { text } = (await request.json()) as { text: string };
@@ -65,21 +102,77 @@ export default {
           return new Response(JSON.stringify({ error: "Text is required" }), { status: 400, headers: corsHeaders });
         }
 
-        const aiResponse = await env.AI.run("@cf/qwen/qwen2.5-coder-32b-instruct", {
+        const aiRes = await env.AI.run("@cf/qwen/qwen2.5-coder-32b-instruct", {
           messages: [
-            { role: "system", content: SYSTEM_PROMPT.trim() },
-            { role: "user", content: `Convert the following Japanese text into tuned Whisper romaji:\n${text}` },
+            { role: "system", content: ROMAJI_CONVERT_PROMPT.trim() },
+            { role: "user", content: `次の日本語をWhisper用ローマ字に変換してください:\n${text}` },
           ],
         });
 
-        const romaji = aiResponse.response.trim();
+        const romaji = aiRes.response.trim();
         return new Response(JSON.stringify({ romaji }), { headers: corsHeaders });
       } catch (err: any) {
         return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
       }
     }
 
-    // API: Trigger GitHub Actions Render
+    // 3. API: Upload media directly from GitHub Actions (bypass zip!)
+    if (url.pathname === "/api/upload" && request.method === "POST") {
+      try {
+        const jobId = url.searchParams.get("job_id");
+        const type = url.searchParams.get("type"); // 'video' or 'audio'
+        if (!jobId || !type) {
+          return new Response(JSON.stringify({ error: "job_id and type required" }), { status: 400, headers: corsHeaders });
+        }
+
+        const arrayBuffer = await request.arrayBuffer();
+        if (env.JOBS) {
+          await env.JOBS.put(`media:${jobId}:${type}`, arrayBuffer, { expirationTtl: 86400 });
+        } else {
+          memoryMedia.set(`media:${jobId}:${type}`, arrayBuffer);
+        }
+
+        return new Response(JSON.stringify({ ok: true, size: arrayBuffer.byteLength }), { headers: corsHeaders });
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+      }
+    }
+
+    // 4. API: Stream media file (MP4 / WAV) directly for inline preview & download
+    if (url.pathname.startsWith("/media/")) {
+      const match = url.pathname.match(/\/media\/([^.]+)\.(mp4|wav)$/);
+      if (!match) {
+        return new Response("Not Found", { status: 404 });
+      }
+
+      const jobId = match[1];
+      const ext = match[2];
+      const type = ext === "mp4" ? "video" : "audio";
+      const contentType = ext === "mp4" ? "video/mp4" : "audio/wav";
+
+      let data: ArrayBuffer | null = null;
+      if (env.JOBS) {
+        data = await env.JOBS.get(`media:${jobId}:${type}`, { type: "arrayBuffer" });
+      } else {
+        data = memoryMedia.get(`media:${jobId}:${type}`) || null;
+      }
+
+      if (!data) {
+        return new Response("Media not found or expired", { status: 404 });
+      }
+
+      return new Response(data, {
+        headers: {
+          "Content-Type": contentType,
+          "Content-Length": data.byteLength.toString(),
+          "Accept-Ranges": "bytes",
+          "Cache-Control": "public, max-age=86400",
+          "Content-Disposition": `inline; filename="gonorego_${jobId}.${ext}"`,
+        },
+      });
+    }
+
+    // 5. API: Trigger GitHub Actions Render
     if (url.pathname === "/api/generate" && request.method === "POST") {
       try {
         const { script_romaji, rate = "128", pitch = "-15" } = (await request.json()) as {
@@ -95,23 +188,18 @@ export default {
         const jobId = `gonorego-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
         const callbackUrl = `${url.origin}/api/callback`;
 
-        // Save initial job state
         if (env.JOBS) {
           await env.JOBS.put(jobId, JSON.stringify({ status: "processing", updated_at: Date.now() }), { expirationTtl: 3600 });
         } else {
           memoryJobs.set(jobId, { status: "processing", updated_at: Date.now() });
         }
 
-        // Trigger GitHub Actions workflow_dispatch
         const ghToken = env.GITHUB_TOKEN;
         if (!ghToken) {
-          return new Response(JSON.stringify({ 
-            error: "GITHUB_TOKEN not configured on Worker. Please set via 'wrangler secret put GITHUB_TOKEN'",
-            job_id: jobId
-          }), { status: 500, headers: corsHeaders });
+          return new Response(JSON.stringify({ error: "GITHUB_TOKEN not configured" }), { status: 500, headers: corsHeaders });
         }
 
-        const ghResponse = await fetch(
+        const ghRes = await fetch(
           `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/actions/workflows/${env.WORKFLOW_FILE}/dispatches`,
           {
             method: "POST",
@@ -133,8 +221,8 @@ export default {
           }
         );
 
-        if (!ghResponse.ok) {
-          const errText = await ghResponse.text();
+        if (!ghRes.ok) {
+          const errText = await ghRes.text();
           return new Response(JSON.stringify({ error: `GitHub API error: ${errText}` }), { status: 502, headers: corsHeaders });
         }
 
@@ -144,7 +232,7 @@ export default {
       }
     }
 
-    // API: Check Job Status
+    // 6. API: Check Job Status
     if (url.pathname.startsWith("/api/status") && request.method === "GET") {
       const jobId = url.searchParams.get("id");
       if (!jobId) {
@@ -166,14 +254,17 @@ export default {
       return new Response(JSON.stringify(job), { headers: corsHeaders });
     }
 
-    // API: Callback from GitHub Actions
+    // 7. API: Callback from GitHub Actions
     if (url.pathname === "/api/callback" && request.method === "POST") {
       try {
-        const data = (await request.json()) as { job_id: string; status: string; video_url?: string; audio_url?: string; run_url?: string };
+        const data = (await request.json()) as { job_id: string; status: string; run_url?: string };
+        const videoUrl = `${url.origin}/media/${data.job_id}.mp4`;
+        const audioUrl = `${url.origin}/media/${data.job_id}.wav`;
+
         const jobData = {
           status: data.status === "success" ? "completed" : "failed",
-          video_url: data.video_url || "",
-          audio_url: data.audio_url || "",
+          video_url: videoUrl,
+          audio_url: audioUrl,
           run_url: data.run_url || "",
           updated_at: Date.now(),
         };
@@ -190,7 +281,7 @@ export default {
       }
     }
 
-    // Fallback: Serve UI HTML directly
+    // Default: Serve Full Retro UI HTML
     return new Response(UI_HTML, {
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
@@ -202,33 +293,34 @@ const UI_HTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>インスタント・ゴノレゴ生成器 (Instant Gonorego)</title>
+  <title>★ インスタント・ゴノレゴ生成器 (Instant Gonorego) ★</title>
   <style>
     body {
-      background-color: #2b2b2b;
+      background-color: #1a1a1a;
       color: #eeeeee;
       font-family: "MS PGothic", "IPAMonaPGothic", "Mona", sans-serif;
       margin: 0;
-      padding: 20px;
+      padding: 15px;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
     .container {
-      max-width: 800px;
+      max-width: 820px;
       width: 100%;
-      background: #1e1e1e;
+      background: #111111;
       border: 3px solid #ff6600;
       padding: 20px;
-      box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
+      box-shadow: 0 0 25px rgba(255, 102, 0, 0.5);
+      box-sizing: border-box;
     }
     h1 {
       color: #ff6600;
-      font-size: 26px;
+      font-size: 24px;
       margin-top: 0;
       text-align: center;
       border-bottom: 2px dashed #ff6600;
-      padding-bottom: 10px;
+      padding-bottom: 8px;
     }
     .banner {
       background: #ff6600;
@@ -237,82 +329,137 @@ const UI_HTML = `<!DOCTYPE html>
       padding: 6px;
       text-align: center;
       margin-bottom: 15px;
+      font-size: 13px;
     }
-    label {
-      display: block;
-      margin-top: 15px;
+    .card {
+      background: #1e1e1e;
+      border: 1px solid #444;
+      padding: 14px;
+      margin-bottom: 15px;
+    }
+    .card-title {
       font-weight: bold;
       color: #ffcc00;
+      font-size: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    input[type="text"] {
+      width: 100%;
+      background: #000;
+      color: #fff;
+      border: 1px solid #666;
+      padding: 8px 10px;
+      font-size: 15px;
+      box-sizing: border-box;
     }
     textarea {
       width: 100%;
       height: 120px;
-      background: #111;
+      background: #000;
       color: #00ff66;
       border: 1px solid #555;
       padding: 10px;
       font-family: monospace;
-      font-size: 14px;
+      font-size: 13px;
       box-sizing: border-box;
       resize: vertical;
     }
-    .preview-box {
-      width: 100%;
-      height: 90px;
-      background: #0a0a0a;
-      color: #00ccff;
-      border: 1px dashed #444;
-      padding: 10px;
-      font-family: monospace;
-      font-size: 13px;
-      box-sizing: border-box;
-      overflow-y: auto;
-      white-space: pre-wrap;
-    }
     .controls {
       display: flex;
+      flex-wrap: wrap;
       gap: 15px;
-      margin-top: 15px;
+      margin-top: 10px;
       align-items: center;
     }
     .btn {
       background: #ff6600;
       color: #fff;
       border: none;
-      padding: 12px 24px;
-      font-size: 16px;
+      padding: 10px 20px;
+      font-size: 15px;
       font-weight: bold;
       cursor: pointer;
       box-shadow: 2px 2px 0 #993d00;
+      transition: background 0.1s;
     }
     .btn:hover {
       background: #ff8533;
     }
+    .btn:active {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0 #993d00;
+    }
     .btn:disabled {
-      background: #666;
+      background: #555;
       cursor: not-allowed;
       box-shadow: none;
     }
+    .btn-ai {
+      background: #2b5bb3;
+      box-shadow: 2px 2px 0 #1a3870;
+      font-size: 13px;
+      padding: 7px 15px;
+    }
+    .btn-ai:hover {
+      background: #3b74db;
+    }
+    .btn-gen {
+      background: #d9381e;
+      box-shadow: 3px 3px 0 #801d0c;
+      font-size: 18px;
+      padding: 14px 28px;
+      width: 100%;
+    }
+    .btn-gen:hover {
+      background: #f0482c;
+    }
     .status-area {
       margin-top: 20px;
-      padding: 15px;
-      background: #111;
-      border: 1px solid #333;
+      padding: 20px;
+      background: #000;
+      border: 2px dashed #ff6600;
       display: none;
       text-align: center;
     }
+    .spinner {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      border: 3px solid rgba(255,102,0,.3);
+      border-radius: 50%;
+      border-top-color: #ff6600;
+      animation: spin 1s ease-in-out infinite;
+      margin-bottom: 10px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .video-container {
       margin-top: 20px;
       display: none;
       text-align: center;
+      background: #000;
+      padding: 15px;
+      border: 2px solid #00ff66;
     }
     video {
       max-width: 100%;
-      border: 2px solid #ff6600;
+      max-height: 440px;
+      border: 2px solid #444;
+      background: #000;
+    }
+    .download-btns {
+      margin-top: 15px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
     .marquee {
-      color: #ff3300;
+      color: #ffcc00;
       font-weight: bold;
+      font-size: 16px;
     }
   </style>
 </head>
@@ -321,63 +468,105 @@ const UI_HTML = `<!DOCTYPE html>
     <h1>★ インスタント・ゴノレゴ生成器 ★</h1>
     <div class="banner">【2001年FLASH黄金期】Cloudflare Workers AI ✕ macOS Whisper 実機合成</div>
 
-    <label>1. 喋らせたい日本語テキストを入力（吉野家構文・パロディなど）:</label>
-    <textarea id="inputJa" placeholder="昨日、Twitter見たんです。Twitter。そしたらなんか普段は脆弱性の話なんかしない連中まで..."></textarea>
-
-    <div style="margin-top: 10px;">
-      <button class="btn" style="background: #3366cc; padding: 6px 14px; font-size: 13px;" onclick="convertText()">AIで音素調声ローマ字に自動変換 (Workers AI)</button>
+    <!-- STEP 1: AI台本自動生成 -->
+    <div class="card">
+      <div class="card-title">① テーマを入力して吉野家構文の台本を自動執筆（Workers AI）:</div>
+      <div style="display:flex; gap:10px;">
+        <input type="text" id="inputTheme" placeholder="例: Docker開発環境, PHP脆弱性対応, 新NISA, 筋トレ, 推し活, タスク管理...">
+        <button class="btn btn-ai" style="white-space:nowrap;" onclick="generateScriptFromTheme()">台本を自動執筆！</button>
+      </div>
+      <div style="font-size:11px; color:#888; margin-top:5px;">※「そんなことより聞いてくれよ１よ」「アホかとバカかと」「諸刃の剣」「〜しとけってこった」の黄金構成で出力します</div>
     </div>
 
-    <label>2. 調声後ローマ字（Whisper誤読排除スクリプト・編集可能）:</label>
-    <textarea id="previewRomaji" placeholder="AI変換ボタンを押すと自動入力されます（手動で微調整も可能です）"></textarea>
-
-    <div class="controls">
-      <div>
-        <label style="display:inline;">話速:</label>
-        <select id="rateSelect" style="background:#222; color:#fff; padding:5px;">
-          <option value="128" selected>128 (吉野家ゴノレゴ完全再現・重厚)</option>
-          <option value="138">138 (標準レート)</option>
-          <option value="145">145 (明瞭まくしたて・速口)</option>
-        </select>
-      </div>
-      <div>
-        <label style="display:inline;">ピッチ:</label>
-        <select id="pitchSelect" style="background:#222; color:#fff; padding:5px;">
-          <option value="-15" selected>-15 (超重厚ドス)</option>
-          <option value="-10">-10 (標準低音)</option>
-        </select>
+    <!-- STEP 2: 台本編集 & ローマ字変換 -->
+    <div class="card">
+      <div class="card-title">② 日本語セリフ台本（手動入力・編集可能）:</div>
+      <textarea id="inputJa" placeholder="そんなことより聞いてくれよ１よ。昨日、Twitter見たんです。Twitter。そしたらなんか普段は脆弱性の話なんかしない連中まで、PHPの脆弱性で大騒ぎしてるんです。もうね、アホかと。馬鹿かと..."></textarea>
+      <div style="margin-top:8px;">
+        <button class="btn btn-ai" onclick="convertText()">AIでWhisper専用ローマ字に調声変換！</button>
       </div>
     </div>
 
-    <div style="margin-top: 25px; text-align: center;">
-      <button id="generateBtn" class="btn" onclick="startGeneration()">怒涛のゴノレゴ動画を生成する！ (MP4)</button>
+    <!-- STEP 3: ローマ字調声 & 速度調整 -->
+    <div class="card">
+      <div class="card-title">③ 調声済みローマ字（Whisper誤読排除スクリプト・編集可能）:</div>
+      <textarea id="previewRomaji" placeholder="AI変換ボタンを押すと自動入力されます（手動で微調整も可能）"></textarea>
+      
+      <div class="controls">
+        <div>
+          <label style="color:#ffcc00; font-weight:bold;">話速:</label>
+          <select id="rateSelect" style="background:#000; color:#fff; border:1px solid #666; padding:4px;">
+            <option value="128" selected>128 (吉野家ゴノレゴ完全再現・重厚ドス)</option>
+            <option value="138">138 (標準レート)</option>
+            <option value="145">145 (明瞭まくしたて・速口)</option>
+          </select>
+        </div>
+        <div>
+          <label style="color:#ffcc00; font-weight:bold;">ピッチ:</label>
+          <select id="pitchSelect" style="background:#000; color:#fff; border:1px solid #666; padding:4px;">
+            <option value="-15" selected>-15 (超重厚ドス)</option>
+            <option value="-10">-10 (標準低音)</option>
+          </select>
+        </div>
+      </div>
     </div>
 
+    <!-- STEP 4: 動画生成ボタン -->
+    <div style="text-align: center; margin-top: 15px;">
+      <button id="generateBtn" class="btn btn-gen" onclick="startGeneration()">🔥 怒涛のゴノレゴ動画を生成する！ (MP4) 🔥</button>
+    </div>
+
+    <!-- 生成中ステータス -->
     <div id="statusArea" class="status-area">
-      <div id="statusText" class="marquee">ただいまゴノレゴが熱弁を準備中...</div>
-      <div style="font-size: 12px; color: #888; margin-top: 8px;">macOS実機 Whisperエンジンでレンダリングしています（約30〜40秒）</div>
+      <div class="spinner"></div>
+      <div id="statusText" class="marquee">ただいまゴノレゴが熱弁中...</div>
+      <div style="font-size: 12px; color: #aaa; margin-top: 8px;">macOS実機 Whisperエンジンでレンダリング＆Flash背景動画を合成しています（約35秒）</div>
     </div>
 
+    <!-- 完成動画プレイヤー (直接インライン再生 & 単体保存) -->
     <div id="videoContainer" class="video-container">
-      <h3 style="color:#00ff66;">＼ ゴノレゴ動画の生成が完了しました！ ／</h3>
+      <h3 style="color:#00ff66; margin-top:0;">＼ ゴノレゴ動画の生成が完了しました！ ／</h3>
       <video id="resultVideo" controls autoplay playsinline></video>
-      <div style="margin-top: 10px;">
-        <a id="downloadVideoLink" class="btn" style="text-decoration:none; display:inline-block;" download="gonorego.mp4">MP4動画を保存</a>
-        <a id="downloadAudioLink" class="btn" style="background:#333; text-decoration:none; display:inline-block; margin-left:10px;" download="gonorego.wav">WAV音声を保存</a>
-        <a id="fallbackArtifactLink" class="btn" style="text-decoration:none; display:none; background:#28a745;" target="_blank">📥 GitHub Actions成果物（動画・音声）をダウンロード</a>
+      <div class="download-btns">
+        <a id="downloadVideoLink" class="btn" style="text-decoration:none;" download>📥 MP4動画を保存（zipなし直接保存）</a>
+        <a id="downloadAudioLink" class="btn" style="background:#333; text-decoration:none;" download>🎵 WAV音声を保存</a>
       </div>
     </div>
   </div>
 
   <script>
-    let currentRomaji = "";
+    // 1. テーマから台本自動執筆
+    async function generateScriptFromTheme() {
+      const theme = document.getElementById("inputTheme").value.trim();
+      if (!theme) return alert("テーマを入力してください！（例: Docker環境、新NISA、PHP脆弱性など）");
 
+      const inputJa = document.getElementById("inputJa");
+      inputJa.value = "Workers AI が吉野家コピペ構文で台本を執筆中...";
+
+      try {
+        const res = await fetch("/api/generate-script", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ theme })
+        });
+        const data = await res.json();
+        if (data.script) {
+          inputJa.value = data.script;
+        } else {
+          inputJa.value = "生成失敗: " + (data.error || "不明なエラー");
+        }
+      } catch (err) {
+        inputJa.value = "通信エラー: " + err.message;
+      }
+    }
+
+    // 2. 日本語からWhisper専用ローマ字変換
     async function convertText() {
       const text = document.getElementById("inputJa").value.trim();
-      if (!text) return alert("テキストを入力してください！");
+      if (!text) return alert("日本語セリフを入力してください！");
 
       const preview = document.getElementById("previewRomaji");
-      preview.value = "Workers AI が音素調声中...";
+      preview.value = "Workers AI がWhisper誤読排除ローマ字に調声中...";
 
       try {
         const res = await fetch("/api/convert", {
@@ -396,12 +585,17 @@ const UI_HTML = `<!DOCTYPE html>
       }
     }
 
+    // 3. 動画生成リクエスト
     async function startGeneration() {
-      const romaji = document.getElementById("previewRomaji").value.trim();
+      let romaji = document.getElementById("previewRomaji").value.trim();
       if (!romaji) {
-        alert("調声後ローマ字が空です。「AIで音素調声ローマ字に自動変換」を押すか、直接ローマ字を入力してください。");
-        return;
+        const ja = document.getElementById("inputJa").value.trim();
+        if (!ja) return alert("台本を入力するか、テーマから台本を生成してください！");
+        await convertText();
+        romaji = document.getElementById("previewRomaji").value.trim();
       }
+
+      if (!romaji) return alert("ローマ字スクリプトの準備ができませんでした。");
 
       const rate = document.getElementById("rateSelect").value;
       const pitch = document.getElementById("pitchSelect").value;
@@ -437,8 +631,8 @@ const UI_HTML = `<!DOCTYPE html>
       }
     }
 
+    // 4. ポーリング（完成したら動画プレビュー表示）
     async function pollStatus(jobId) {
-      const statusText = document.getElementById("statusText");
       const pollInterval = setInterval(async () => {
         try {
           const res = await fetch("/api/status?id=" + jobId);
@@ -454,24 +648,20 @@ const UI_HTML = `<!DOCTYPE html>
             const video = document.getElementById("resultVideo");
             const dlVideo = document.getElementById("downloadVideoLink");
             const dlAudio = document.getElementById("downloadAudioLink");
-            const fallbackLink = document.getElementById("fallbackArtifactLink");
 
-            if (data.video_url && data.video_url.endsWith(".mp4")) {
-              video.src = data.video_url;
-              dlVideo.href = data.video_url;
-              if (data.audio_url) dlAudio.href = data.audio_url;
-              video.style.display = "block";
-              fallbackLink.style.display = "none";
-            } else {
-              // Direct R2 URL not configured, link to GitHub Artifacts
-              video.style.display = "none";
-              fallbackLink.href = data.run_url || data.video_url;
-              fallbackLink.style.display = "inline-block";
-              dlVideo.style.display = "none";
-              dlAudio.style.display = "none";
-            }
+            const videoUrl = data.video_url || ("/media/" + jobId + ".mp4");
+            const audioUrl = data.audio_url || ("/media/" + jobId + ".wav");
+
+            video.src = videoUrl;
+            dlVideo.href = videoUrl;
+            dlVideo.setAttribute("download", "gonorego_" + jobId + ".mp4");
+
+            dlAudio.href = audioUrl;
+            dlAudio.setAttribute("download", "gonorego_" + jobId + ".wav");
 
             videoContainer.style.display = "block";
+            video.load();
+            video.play().catch(e => console.log("Auto-play prevented"));
           } else if (data.status === "failed") {
             clearInterval(pollInterval);
             alert("生成に失敗しました。GitHub Actionsの実行ログをご確認ください。");
@@ -479,7 +669,7 @@ const UI_HTML = `<!DOCTYPE html>
             document.getElementById("generateBtn").disabled = false;
           }
         } catch (e) {}
-      }, 5000);
+      }, 4000);
     }
   </script>
 </body>

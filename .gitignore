@@ -7,3 +7,5 @@ p3.txt
 p4.txt
 *.mp4
 gonorego_visual.jpg
+.wrangler/
+cloudflare/.wrangler/

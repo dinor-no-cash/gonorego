@@ -134,6 +134,26 @@ jobs:
               print("Cloudflare R2 secrets not configured; skipping direct R2 upload.")
           EOF
 
+      - name: Upload Media Directly to Cloudflare Worker
+        id: worker_upload
+        run: |
+          CALLBACK_URL="${{ inputs.callback_url }}"
+          JOB_ID="${{ inputs.job_id }}"
+          
+          WORKER_BASE=$(echo "$CALLBACK_URL" | sed -E 's|/api/callback.*||')
+          
+          if [ -n "$WORKER_BASE" ]; then
+            echo "Uploading output.mp4 directly to ${WORKER_BASE}/api/upload..."
+            curl -s -X POST "${WORKER_BASE}/api/upload?job_id=${JOB_ID}&type=video" \
+              -H "Content-Type: video/mp4" \
+              --data-binary @output.mp4 || echo "Video upload failed"
+              
+            echo "Uploading output.wav directly to ${WORKER_BASE}/api/upload..."
+            curl -s -X POST "${WORKER_BASE}/api/upload?job_id=${JOB_ID}&type=audio" \
+              -H "Content-Type: audio/wav" \
+              --data-binary @output.wav || echo "Audio upload failed"
+          fi
+
       - name: Upload Artifacts as GitHub Actions Backup
         uses: actions/upload-artifact@v4
         with:
@@ -151,17 +171,9 @@ jobs:
           if [ -n "$CALLBACK_URL" ]; then
             echo "Sending completion callback to ${CALLBACK_URL}..."
             STATUS="${{ job.status }}"
-            VIDEO_URL="${{ steps.r2_upload.outputs.video_url }}"
-            AUDIO_URL="${{ steps.r2_upload.outputs.audio_url }}"
             RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            
-            # If no R2 URL, fallback to GitHub Actions run URL
-            if [ -z "$VIDEO_URL" ]; then
-              VIDEO_URL="${RUN_URL}"
-              AUDIO_URL="${RUN_URL}"
-            fi
             
             curl -s -X POST "${CALLBACK_URL}" \
               -H "Content-Type: application/json" \
-              -d "{\"job_id\":\"${{ inputs.job_id }}\",\"status\":\"${STATUS}\",\"video_url\":\"${VIDEO_URL}\",\"audio_url\":\"${AUDIO_URL}\",\"run_url\":\"${RUN_URL}\"}" || echo "Callback failed"
+              -d "{\"job_id\":\"${{ inputs.job_id }}\",\"status\":\"${STATUS}\",\"run_url\":\"${RUN_URL}\"}" || echo "Callback failed"
           fi
