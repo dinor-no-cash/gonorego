@@ -169,11 +169,12 @@ export default {
     // API: Callback from GitHub Actions
     if (url.pathname === "/api/callback" && request.method === "POST") {
       try {
-        const data = (await request.json()) as { job_id: string; status: string; video_url?: string; audio_url?: string };
+        const data = (await request.json()) as { job_id: string; status: string; video_url?: string; audio_url?: string; run_url?: string };
         const jobData = {
           status: data.status === "success" ? "completed" : "failed",
           video_url: data.video_url || "",
           audio_url: data.audio_url || "",
+          run_url: data.run_url || "",
           updated_at: Date.now(),
         };
 
@@ -363,6 +364,7 @@ const UI_HTML = `<!DOCTYPE html>
       <div style="margin-top: 10px;">
         <a id="downloadVideoLink" class="btn" style="text-decoration:none; display:inline-block;" download="gonorego.mp4">MP4動画を保存</a>
         <a id="downloadAudioLink" class="btn" style="background:#333; text-decoration:none; display:inline-block; margin-left:10px;" download="gonorego.wav">WAV音声を保存</a>
+        <a id="fallbackArtifactLink" class="btn" style="text-decoration:none; display:none; background:#28a745;" target="_blank">📥 GitHub Actions成果物（動画・音声）をダウンロード</a>
       </div>
     </div>
   </div>
@@ -452,10 +454,22 @@ const UI_HTML = `<!DOCTYPE html>
             const video = document.getElementById("resultVideo");
             const dlVideo = document.getElementById("downloadVideoLink");
             const dlAudio = document.getElementById("downloadAudioLink");
+            const fallbackLink = document.getElementById("fallbackArtifactLink");
 
-            video.src = data.video_url;
-            dlVideo.href = data.video_url;
-            if (data.audio_url) dlAudio.href = data.audio_url;
+            if (data.video_url && data.video_url.endsWith(".mp4")) {
+              video.src = data.video_url;
+              dlVideo.href = data.video_url;
+              if (data.audio_url) dlAudio.href = data.audio_url;
+              video.style.display = "block";
+              fallbackLink.style.display = "none";
+            } else {
+              // Direct R2 URL not configured, link to GitHub Artifacts
+              video.style.display = "none";
+              fallbackLink.href = data.run_url || data.video_url;
+              fallbackLink.style.display = "inline-block";
+              dlVideo.style.display = "none";
+              dlAudio.style.display = "none";
+            }
 
             videoContainer.style.display = "block";
           } else if (data.status === "failed") {
