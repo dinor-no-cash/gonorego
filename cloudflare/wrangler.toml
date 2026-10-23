@@ -8,9 +8,9 @@ binding = "AI"
 
 # KV namespace for tracking generation job status
 # Run: wrangler kv:namespace create JOBS
-# [[kv_namespaces]]
-# binding = "JOBS"
-# id = "YOUR_KV_NAMESPACE_ID"
+[[kv_namespaces]]
+binding = "JOBS"
+id = "c3a7442275df456d89b3ab36c0427c31"
 
 [vars]
 GITHUB_OWNER = "dinor-no-cash"
