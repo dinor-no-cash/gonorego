@@ -1,69 +1,69 @@
-# ゴノレゴ（MacinTalk Whisper）の本来の発声に完全回帰させた自然なローマ字原稿
-# - 変な子音連続（-hk-, -hn-, -ye-, -igh-等）を完全排除（これが原因で未知の単語としてアルファベット1文字ずつスペルアウトされていた）
-# - 「WAF」は小文字「waff」で自然に「ワフ」と発音
-# - 「しない」は自然な英語単語の組み合わせ「she nye」で滑らかに「シー・ナイ」と発音
-# - 「PHP」「CVSS」など明示的に略称読みさせたい箇所のみスペース区切り大文字を指定
+# 英語音声合成エンジンの短縮語判定・英単語衝突を完全排除した調声原稿
+# - 「脆弱性」: 「zeijakusei」を解体し、確実に発音される英単語単位「zay jaku say」（ゼイ・ジャク・セイ）へ置換
+# - 「まで」: 英語過去形「made（メード）」と誤読されないよう「ma deh」へ置換
+# - 「が」: 米国ジョージア州略称「GA（ジー・エー）」と誤読されないよう「gah」へ置換
+# - 助詞「で」「は」「と」「だ」: 英略語判定を避けるため「deh」「wah」「toh」「dah」へ完全防護
 
-CLEAN_SCRIPT = """
+TUNED_SCRIPT = """
 Kino, Twitter mitan desu. Twitter.
 
-Soshitara nanka, fudan wa zeijakusei no hanashi nanka she nye renchu made, P H P no zeijakusei de osawagi shiterun desu.
+Soshitara nanka, fudan wah zay jaku say no hanashi nanka she nye renchu ma deh, P H P no zay jaku say deh osawagi shiterun desu.
 
-De, yoku mitara nanka, php2shell toka kaite arun desu.
+Deh, yoku mitara nanka, php2shell toka kaite arun desu.
 
-Mou ne, aho ka to. Baka ka to.
+Mou neh, aho kah toh. Baka kah toh.
 
-Omaera na, php2shell ga wadai ni natta kurai de, fudan mimuki mo she nye zeijakusei taio ni muragatten ja ne yo, boke ga.
+Omaera nah, php2shell gah wadai nee natta kurai deh, fudan mimuki moh she nye zay jaku say taio nee muragatten jah neh yoh, boke gah.
 
-Critical da yo, Critical.
+Critical dah yoh, Critical.
 
-Omaera ga kino made misugoshiteta zeijakusei mo Critical darou ga.
+Omaera gah kino ma deh misugoshiteta zay jaku say moh Critical darou gah.
 
-Nanka fudan security ni kyomi nai hito toka mo iru shi. Zensha soude de zeijakusei taio ka. Omedete na.
+Nanka fudan security nee kyomi nai hito toka moh iru shi. Zensha soude deh zay jaku say taio kah. Omedete nah.
 
-Yoshi papa kinkyu security taio shichau zo, toka itteru no. Mou miterannai.
+Yoshi papa kinkyu security taio shichau zoh, toka itteru no. Mou miterannai.
 
-Omaera na, C V S S ten point zero no ticket yaru kara sono seki akero to.
+Omaera nah, C V S S ten point zero no ticket yaru kara sono seki akero toh.
 
-Zeijakusei taio tte no wa na, motto satsubatsu to shiteru beki nan da yo.
+Zay jaku say taio tteh no wah nah, motto satsubatsu toh shiteru beki nan dah yoh.
 
-Honban kankyo no version ichiran o hasande, kaihatsu tanto to infra tanto ga itsu kenka o hajimete mo okashiku nai, patch o ateru ka service o tomeru ka, sonna funiki ga iin ja ne ka.
+Honban kankyo no version ichiran oh hasande, kaihatsu tanto toh infra tanto gah itsu kenka oh hajimete moh okashiku nai, patch oh ateru kah service oh tomeru kah, sonna funiki gah een jah neh kah.
 
-Niwaka yushikisha wa, sukkondero.
+Niwaka yushikisha wah, sukkondero.
 
-De, yatto eikyo hani no kakunin ga hajimatta ka to omottara, tonari no yatsu ga, toriaezu waff de, toka itterun desu.
+Deh, yatto eikyo hani no kakunin gah hajimatta kah toh omottara, tonari no yatsu gah, toriaezu waff deh, toka itterun desu.
 
-Soko de mata buchigire desu yo.
+Soko deh mata buchigire desu yoh.
 
-Ano na, waff de fusegeru kamo kakunin sezu ni, toriaezu waff nante kyobi hayannain da yo. Boke ga.
+Ano nah, waff deh fusegeru kamo kakunin sezu nee, toriaezu waff nante kyobi hayannain dah yoh. Boke gah.
 
-Tokuige na kao shite nani ga, toriaezu waff de, da.
+Tokuige nah kao shite nani gah, toriaezu waff deh, dah.
 
-Omae wa honto ni jisha ga eikyo o ukeru no ka haaku shiteru no ka to toitai. Toitsumetai. Shoichijikan toitsumetai.
+Omae wah honto nee jisha gah eikyo oh ukeru no kah haaku shiteru no kah toh toitai. Toitsumetai. Shoichijikan toitsumetai.
 
-Omae, waff tte iitai dake chaun ka to.
+Omae, waff tteh iitai dake chaun kah toh.
 
-Zeijakusei taio tsu no ore kara iwasete moraeba ima, tsu no aida de no saishin ryuko wa yappari, eikyo hani no tanaoroshi, kore da ne.
+Zay jaku say taio tsu no ore kara iwasete moraeba ima, tsu no aida deh no saishin ryuko wah yappari, eikyo hani no tanaoroshi, kore dah neh.
 
-Eikyo hani no tanaoroshi, akuyo kanosei no kakunin, patch tekiyo. Kore ga tsu no tanomikata.
+Eikyo hani no tanaoroshi, akuyo kanosei no kakunin, patch tekiyo. Kore gah tsu no tanomikata.
 
-Tanaoroshi tte no wa tsukatteru software o haaku dekiru. Son kawari hochi shiteru zeijakusei mo mitsukaru. Kore.
+Tanaoroshi tteh no wah tsukatteru software oh haaku dekiru. Son kawari hochi shiteru zay jaku say moh mitsukaru. Kore.
 
-De, sore ni akuyo kanosei to jigyo eikyo o fumaeta yusen junizuke. Kore saikyo.
+Deh, sore nee akuyo kanosei toh jigyo eikyo oh fumaeta yusen junizuke. Kore saikyo.
 
-Shikashi kore o tanomu to ima made misugoshiteta zeijakusei ga tairyo ni mitsukatte taio ni owareru to iu kiken mo tomonau, moroha no tsurugi.
+Shikashi kore oh tanomu toh ima ma deh misugoshiteta zay jaku say gah tairyo nee mitsukatte taio nee owareru toh iu kiken moh tomonau, moroha no tsurugi.
 
-Shiroto ni wa osusume dekinai.
+Shiroto nee wah osusume dekinai.
 
-Ma omaera doshiroto wa, mitaio no Dependabot Alerts demo nagametenasai tte kotta.
+Mah omaera doshiroto wah, mitaio no Dependabot Alerts demo nagametenasai tteh kotta.
 """
 
 def main():
-    cleaned = CLEAN_SCRIPT.strip()
+    cleaned = TUNED_SCRIPT.strip()
     with open("romaji.txt", "w", encoding="utf-8") as f:
         f.write(cleaned)
 
-    print("=== Successfully wrote natural fluent romaji.txt ===")
+    print("=== Successfully wrote bulletproof tuned romaji.txt ===")
     print(cleaned[:300] + "...")
 
 if __name__ == "__main__":
