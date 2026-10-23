@@ -1,61 +1,69 @@
 # 英語音声合成エンジンの短縮語判定・英単語衝突を完全排除した調声原稿
-# - 「脆弱性」: 「zeijakusei」を解体し、確実に発音される英単語単位「zay jaku say」（ゼイ・ジャク・セイ）へ置換
-# - 「まで」: 英語過去形「made（メード）」と誤読されないよう「ma deh」へ置換
-# - 「が」: 米国ジョージア州略称「GA（ジー・エー）」と誤読されないよう「gah」へ置換
-# - 助詞「で」「は」「と」「だ」: 英略語判定を避けるため「deh」「wah」「toh」「dah」へ完全防護
+# - 「脆弱性」: 「zay jaku say」（ゼイ・ジャク・セイ）
+# - 「まで」: 英語過去形「made」誤読防止 -> 「ma deh」
+# - 「が」: 米国ジョージア州略称「GA」誤読防止 -> 「gah」
+# - 「それ」「俺」「これ」: 英語「sore (痛い)」「ore (鉱石)」「core」誤読防止 -> 「soh reh」「oh reh」「koh reh」
+# - 「範囲」: 英語「honey」誤読防止 -> 「hah nee」
+# - 「人」: 英語「hi」誤読防止 -> 「hee toh」
+# - 「その」「そこ」: 英語「so」「no」誤読防止 -> 「soh noh」「Soh koh」
+# - 「そん」: 英語「son (息子)」誤読防止 -> 「Sohn」
+# - 「でも」: 英語「demo」誤読防止 -> 「deh moh」
+# - 「とか」: 英語「to」誤読防止 -> 「toh kah」
+# - 「ボケ」: 英語「boke」誤読防止 -> 「boh keh」
+# - 「〜るん」: 英語「run (走る)」誤読防止 -> 「roon」
 
 TUNED_SCRIPT = """
-Kino, Twitter mitan desu. Twitter.
+Kee noh, Twitter mee tahn desu. Twitter.
 
-Soshitara nanka, fudan wah zay jaku say no hanashi nanka she nye renchu ma deh, P H P no zay jaku say deh osawagi shiterun desu.
+Soshitara nahn kah, foo dahn wah zay jaku say noh hah nah she nahn kah she nye renchoo ma deh, P H P noh zay jaku say deh oh sah wah ghee she teh roon desu.
 
-Deh, yoku mitara nanka, php2shell toka kaite arun desu.
+Deh, yoh koo mee tah rah nahn kah, php2shell toh kah kye teh ah roon desu.
 
-Mou neh, aho kah toh. Baka kah toh.
+Moh neh, ah hoh kah toh. Bah kah kah toh.
 
-Omaera nah, php2shell gah wadai nee natta kurai deh, fudan mimuki moh she nye zay jaku say taio nee muragatten jah neh yoh, boke gah.
+Oh mah eh rah nah, php2shell gah wah dye nee naht tah koo rye deh, foo dahn mee moo kee moh she nye zay jaku say tie oh nee moo rah gaht ten jah neh yoh, boh keh gah.
 
 Critical dah yoh, Critical.
 
-Omaera gah kino ma deh misugoshiteta zay jaku say moh Critical darou gah.
+Oh mah eh rah gah kee noh ma deh mee soo goh she teh tah zay jaku say moh Critical dah roh gah.
 
-Nanka fudan security nee kyomi nai hito toka moh iru shi. Zensha soude deh zay jaku say taio kah. Omedete nah.
+Nahn kah foo dahn security nee kyoh mee nye hee toh toh kah moh ee roo she. Zen shah soh deh deh zay jaku say tie oh kah. Oh meh deh teh nah.
 
-Yoshi papa kinkyu security taio shichau zoh, toka itteru no. Mou miterannai.
+Yoh she papa keen kyoo security tie oh she chow zoh, toh kah eet teh roo noh. Moh mee teh rahn nye.
 
-Omaera nah, C V S S ten point zero no ticket yaru kara sono seki akero toh.
+Oh mah eh rah nah, C V S S ten point zero noh ticket yah roo kah rah soh noh seh kee ah keh roh toh.
 
-Zay jaku say taio tteh no wah nah, motto satsubatsu toh shiteru beki nan dah yoh.
+Zay jaku say tie oh tteh noh wah nah, mot toh sah tsoo bah tsoo toh she teh roo beh kee nahn dah yoh.
 
-Honban kankyo no version ichiran oh hasande, kaihatsu tanto toh infra tanto gah itsu kenka oh hajimete moh okashiku nai, patch oh ateru kah service oh tomeru kah, sonna funiki gah een jah neh kah.
+Hohn bahn kahn kyoh noh version ee chee rahn oh hah sahn deh, kye hah tsoo tahn toh toh infra tahn toh gah ee tsoo ken kah oh hah jee meh teh moh oh kah she koo nye, patch oh ah teh roo kah service oh toh meh roo kah, sohn nah foon ee kee gah een jah neh kah.
 
-Niwaka yushikisha wah, sukkondero.
+Nee wah kah yoo she kee shah wah, sook kohn deh roh.
 
-Deh, yatto eikyo hani no kakunin gah hajimatta kah toh omottara, tonari no yatsu gah, toriaezu waff deh, toka itterun desu.
+Deh, yaht toh ay kyoh hah nee noh kah koo neen gah hah jee maht tah kah toh oh moht tah rah, toh nah ree noh yah tsoo gah, toh ree ah eh zoo waff deh, toh kah eet teh roon desu.
 
-Soko deh mata buchigire desu yoh.
+Soh koh deh mah tah boo chee ghee reh desu yoh.
 
-Ano nah, waff deh fusegeru kamo kakunin sezu nee, toriaezu waff nante kyobi hayannain dah yoh. Boke gah.
+Ah noh nah, waff deh foo seh geh roo kah moh kah koo neen seh zoo nee, toh ree ah eh zoo waff nahn teh kyoh bee hah yahn nye nahn dah yoh. Boh keh gah.
 
-Tokuige nah kao shite nani gah, toriaezu waff deh, dah.
+Toh koo ee geh nah kah oh she teh nah nee gah, toh ree ah eh zoo waff deh, dah.
 
-Omae wah honto nee jisha gah eikyo oh ukeru no kah haaku shiteru no kah toh toitai. Toitsumetai. Shoichijikan toitsumetai.
+Oh mah eh wah hohn toh nee jee shah gah ay kyoh oh oo keh roo noh kah hah ah koo she teh roo noh kah toh toy tie. Toy tsoo meh tie. Shoh ee chee jee kahn toy tsoo meh tie.
 
-Omae, waff tteh iitai dake chaun kah toh.
+Oh mah eh, waff tteh ee ee tie dah keh chown kah toh.
 
-Zay jaku say taio tsu no ore kara iwasete moraeba ima, tsu no aida deh no saishin ryuko wah yappari, eikyo hani no tanaoroshi, kore dah neh.
+Zay jaku say tie oh tsoo noh oh reh kah rah ee wah seh teh moh rah eh bah ee mah, tsoo noh ah ee dah deh noh sigh sheen ryoo koh wah yahp pah ree, ay kyoh hah nee noh tah nah oh roh she, koh reh dah neh.
 
-Eikyo hani no tanaoroshi, akuyo kanosei no kakunin, patch tekiyo. Kore gah tsu no tanomikata.
+Ay kyoh hah nee noh tah nah oh roh she, ah koo yoh kah noh say noh kah koo neen, patch teh kee yoh. Koh reh gah tsoo noh tah noh mee kah tah.
 
-Tanaoroshi tteh no wah tsukatteru software oh haaku dekiru. Son kawari hochi shiteru zay jaku say moh mitsukaru. Kore.
+Tah nah oh roh she tteh noh wah tsukatteru software oh hah ah koo deh kee roo. Sohn kah wah ree hoh chee she teh roo zay jaku say moh mee tsoo kah roo. Koh reh.
 
-Deh, sore nee akuyo kanosei toh jigyo eikyo oh fumaeta yusen junizuke. Kore saikyo.
+Deh, soh reh nee ah koo yoh kah noh say toh jee gyoh ay kyoh oh foo my tah yoo sen joon ee zoo keh. Koh reh sigh kyoh.
 
-Shikashi kore oh tanomu toh ima ma deh misugoshiteta zay jaku say gah tairyo nee mitsukatte taio nee owareru toh iu kiken moh tomonau, moroha no tsurugi.
+She kah she koh reh oh tah noh moo toh ee mah ma deh mee soo goh she teh tah zay jaku say gah tie ryoh nee mee tsoo kaht teh tie oh nee oh wah reh roo toh ee oo kee ken moh toh moh now, moh roh hah noh tsoo roo ghee.
 
-Shiroto nee wah osusume dekinai.
+Shee roh toh nee wah oh soo soo meh deh kee nye.
 
-Mah omaera doshiroto wah, mitaio no Dependabot Alerts demo nagametenasai tteh kotta.
+Mah oh mah eh rah doh shee roh toh wah, mee tie oh noh Dependabot Alerts deh moh nah gah meh teh nah sigh tteh koht tah.
 """
 
 def main():
