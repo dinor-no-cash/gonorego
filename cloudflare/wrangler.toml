@@ -1,0 +1,23 @@
+name = "instant-gonorego"
+main = "src/index.ts"
+compatibility_date = "2024-04-01"
+
+# Workers AI binding (No API key needed!)
+[ai]
+binding = "AI"
+
+# KV namespace for tracking generation job status
+# Run: wrangler kv:namespace create JOBS
+# [[kv_namespaces]]
+# binding = "JOBS"
+# id = "YOUR_KV_NAMESPACE_ID"
+
+[vars]
+GITHUB_OWNER = "dinor-no-cash"
+GITHUB_REPO = "gonorego"
+WORKFLOW_FILE = "instant_gonorego.yml"
+# Set via: wrangler secret put GITHUB_TOKEN
+
+# Cloudflare Pages / Static Assets configuration (if serving static)
+# [site]
+# bucket = "./public"

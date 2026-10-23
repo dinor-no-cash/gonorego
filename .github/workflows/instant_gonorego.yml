@@ -1,0 +1,159 @@
+name: Instant Gonorego Generator
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: 'Unique Job Identifier'
+        required: true
+        type: string
+        default: 'test-job'
+      script_romaji:
+        description: 'Tuned Romaji Script for MacinTalk Whisper'
+        required: true
+        type: string
+      rate:
+        description: 'Speech Rate (Default: 128 for authentic Gonorego)'
+        required: false
+        type: string
+        default: '128'
+      pitch_baseline:
+        description: 'Pitch Baseline (Default: -15)'
+        required: false
+        type: string
+        default: '-15'
+      callback_url:
+        description: 'Callback URL to notify completion'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  render:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install boto3 requests
+
+      - name: Synthesize Voice via macOS Whisper
+        id: synth
+        run: |
+          JOB_ID="${{ inputs.job_id }}"
+          RATE="${{ inputs.rate }}"
+          PBAS="${{ inputs.pitch_baseline }}"
+          
+          # Write romaji script with speech tune tags
+          echo "[[rate ${RATE}]][[pbas ${PBAS}]][[pmod 0]]" > input_script.txt
+          cat << 'EOF' >> input_script.txt
+          ${{ inputs.script_romaji }}
+          EOF
+
+          echo "=== Generating Voice for Job: ${JOB_ID} ==="
+          cat input_script.txt
+
+          # macOS native Whisper synthesis
+          say -v Whisper -f input_script.txt -o audio.aiff
+          
+          # Convert to 16-bit PCM WAV
+          afconvert -f WAVE -d LEI16 audio.aiff output.wav
+          ls -la output.wav
+
+      - name: Render Video with Authentic Gonorego Flash Visual
+        id: video
+        run: |
+          # Render MP4 using ffmpeg (pre-installed on macos-latest runner)
+          ffmpeg -y -loop 1 -i gonorego_authentic.jpg -i output.wav \
+            -c:v libx264 -tune stillimage -pix_fmt yuv420p \
+            -c:a aac -b:a 192k -shortest output.mp4
+          ls -la output.mp4
+
+      - name: Upload to Cloudflare R2 (If configured)
+        id: r2_upload
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_PUBLIC_URL_BASE: ${{ secrets.R2_PUBLIC_URL_BASE }}
+        run: |
+          python - << 'EOF'
+          import os
+          import boto3
+          from botocore.config import Config
+
+          endpoint = os.getenv("R2_ENDPOINT")
+          key_id = os.getenv("R2_ACCESS_KEY_ID")
+          secret = os.getenv("R2_SECRET_ACCESS_KEY")
+          bucket = os.getenv("R2_BUCKET_NAME")
+          public_base = os.getenv("R2_PUBLIC_URL_BASE", "").rstrip("/")
+          job_id = "${{ inputs.job_id }}"
+
+          if endpoint and key_id and secret and bucket:
+              print(f"Uploading artifacts for job {job_id} to Cloudflare R2...")
+              s3 = boto3.client(
+                  "s3",
+                  endpoint_url=endpoint,
+                  aws_access_key_id=key_id,
+                  aws_secret_access_key=secret,
+                  config=Config(signature_version="s3v4")
+              )
+              
+              # Upload MP4
+              mp4_key = f"gonorego/{job_id}.mp4"
+              s3.upload_file("output.mp4", bucket, mp4_key, ExtraArgs={"ContentType": "video/mp4"})
+              
+              # Upload WAV
+              wav_key = f"gonorego/{job_id}.wav"
+              s3.upload_file("output.wav", bucket, wav_key, ExtraArgs={"ContentType": "audio/wav"})
+              
+              video_url = f"{public_base}/{mp4_key}" if public_base else f"{endpoint}/{bucket}/{mp4_key}"
+              audio_url = f"{public_base}/{wav_key}" if public_base else f"{endpoint}/{bucket}/{wav_key}"
+              
+              print(f"::set-output name=video_url::{video_url}")
+              print(f"::set-output name=audio_url::{audio_url}")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write(f"video_url={video_url}\n")
+                  f.write(f"audio_url={audio_url}\n")
+              print(f"Uploaded successfully! Video URL: {video_url}")
+          else:
+              print("Cloudflare R2 secrets not configured; skipping direct R2 upload.")
+          EOF
+
+      - name: Upload Artifacts as GitHub Actions Backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.job_id }}
+          path: |
+            output.mp4
+            output.wav
+            input_script.txt
+          retention-days: 3
+
+      - name: Notify Cloudflare Worker Callback (If configured)
+        if: always()
+        run: |
+          CALLBACK_URL="${{ inputs.callback_url }}"
+          if [ -n "$CALLBACK_URL" ]; then
+            echo "Sending completion callback to ${CALLBACK_URL}..."
+            STATUS="${{ job.status }}"
+            VIDEO_URL="${{ steps.r2_upload.outputs.video_url }}"
+            AUDIO_URL="${{ steps.r2_upload.outputs.audio_url }}"
+            
+            curl -s -X POST "${CALLBACK_URL}" \
+              -H "Content-Type: application/json" \
+              -d "{\"job_id\":\"${{ inputs.job_id }}\",\"status\":\"${STATUS}\",\"video_url\":\"${VIDEO_URL}\",\"audio_url\":\"${AUDIO_URL}\"}" || echo "Callback failed"
+          fi
