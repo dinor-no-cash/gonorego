@@ -125,7 +125,7 @@ def run_pipeline(ja_path: str, ro_path: str, rate: str, pbas: str, out_wav: str,
         line_start = current_timeline
         line_end = line_start + dur
 
-        # 4. Allocate subtitles strictly within [line_start, line_end]
+        # 4. Allocate subtitles ONLY for iconic punchline/impact lines
         chunks = split_line_into_chunks(ja_line)
         chunk_weights = [max(len(c), 2) for c in chunks]
         total_w = sum(chunk_weights)
@@ -136,18 +136,17 @@ def run_pipeline(ja_path: str, ro_path: str, rate: str, pbas: str, out_wav: str,
             c_end = min(c_start + c_dur, line_end)
 
             is_impact = any(k in c for k in impact_keywords)
-            is_sub = any(k in c for k in sub_impact_keywords)
-            style = "Impact" if is_impact else ("SubImpact" if is_sub else "Default")
+            
+            # ONLY render subtitles for punchline / impact moments!
+            if is_impact:
+                disp_text = c
+                if len(disp_text) > 13:
+                    mid = len(disp_text) // 2
+                    disp_text = disp_text[:mid] + "\\N" + disp_text[mid:]
 
-            disp_text = c
-            if len(disp_text) > 13:
-                mid = len(disp_text) // 2
-                disp_text = disp_text[:mid] + "\\N" + disp_text[mid:]
-
-            if style == "Impact":
                 disp_text = f"{{\\b1}}{disp_text}{{\\b0}}"
+                events.append(f"Dialogue: 0,{format_ass_time(c_start)},{format_ass_time(c_end)},Impact,,0,0,0,,{disp_text}")
 
-            events.append(f"Dialogue: 0,{format_ass_time(c_start)},{format_ass_time(c_end)},{style},,0,0,0,,{disp_text}")
             c_start = c_end
 
         current_timeline = line_end
