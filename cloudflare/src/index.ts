@@ -76,8 +76,10 @@ Whisperは米語（米国英語）エンジンです。日本語をそのまま�
 ・「諸刃の剣」->「moroha no tsurugi」
 ・「ブチ切れ」->「buchi kee reh」
 ・「最新流行」->「saishin ryuukou」
+・「大規模」->「dah ee kee boh」（※英語では『dai』はdaily/aidのように必ず『デイ』と読まれるため、daikiboと書くと100%『でえきぼ』になります！必ず『dah ee kee boh』と書くこと！）
+・「にわか」->「nee wah kah」（※英語では『ni』はnice/nightのように『ナイ』と読まれるため、niwakaと書くと100%『ないわか』になります！必ず『nee wah kah』と書くこと！）
 ・「開発」->「kah ee hah tsoo」（※英語では『ai』はrain/waitのように必ず『エイ』と読まれるため、kaihatsuと書くと100%『ケイハツ』になります！必ず『kah ee hah tsoo』と書くこと！）
-・「アイ（ai）」の音は「ah ee」に分解して確実に『アイ』を発音させる（例：開発->kah ee hah tsoo, サイゼリヤ->Sah ee zeh ree yah, 〜たい->tah ee, 〜ない->nah ee）
+・「アイ（ai）」の音はすべて「ah ee」に音節分解して確実に『アイ』を発音させる（例：大規模->dah ee kee boh, 開発->kah ee hah tsoo, サイゼリヤ->Sah ee zeh ree yah, 〜たい->tah ee, 〜ない->nah ee）
 ・助詞「が」->「gah」（※gaと書くとジョージア州GA「ジー・エー」と誤読されます！必ずgahと書くこと！）
 ・助詞「は」->「wah」
 ・助詞「で」->「deh」
@@ -140,6 +142,149 @@ function cleanScriptText(raw: string): string {
   }
 
   return s;
+}
+
+// ★一元フォニックス音節変換エンジン (Syllabic Phonics Transliteration Engine)★
+// 英語として保護する英単語・技術用語・外来語
+const PROTECTED_ENGLISH_WORDS = new Set([
+  'transformers', 'transformer', 'llm', 'local', 'community', 'docker',
+  'kubernetes', 'pytorch', 'gpu', 'api', 'model', 'parameter', 'parameters',
+  'tutorial', 'wine', 'marketing', 'saizeriya', 'saize', 'pre-trained',
+  'fine-tuning', 'ai', 'ui', 'web', 'github', 'actions', 'open', 'webui',
+  'prompt', 'prompts', 'token', 'tokens', 'agent', 'agents', 'code', 'data',
+  'cache', 'pipeline', 'workflow', 'server', 'client', 'json', 'python'
+]);
+
+function isProtectedEnglish(token: string): boolean {
+  const clean = token.replace(/[^a-zA-Z\-]/g, '');
+  if (!clean) return true;
+  if (/[A-Z]/.test(clean)) return true;
+  if (PROTECTED_ENGLISH_WORDS.has(clean.toLowerCase())) return true;
+  return false;
+}
+
+// 既にフォニックス化済みの音節か判定
+const ALREADY_PHONETIC_REGEX = /(?:[aeo]h|ee|oo|tsoo|ghee|gheh)\b/i;
+
+// 一元音節変換テーブル（最長一致）
+const SYLLABLE_MAP: [string, string][] = [
+  // 拗音・特殊音節 (3文字)
+  ['kya', 'kyah'], ['kyu', 'kyoo'], ['kyo', 'kyoh'],
+  ['sha', 'shah'], ['shu', 'shoo'], ['sho', 'shoh'],
+  ['cha', 'chah'], ['chu', 'choo'], ['cho', 'choh'],
+  ['nya', 'nyah'], ['nyu', 'nyoo'], ['nyo', 'nyoh'],
+  ['hya', 'hyah'], ['hyu', 'hyoo'], ['hyo', 'hyoh'],
+  ['mya', 'myah'], ['myu', 'myoo'], ['myo', 'myoh'],
+  ['rya', 'ryah'], ['ryu', 'ryoo'], ['ryo', 'ryoh'],
+  ['gya', 'gyah'], ['gyu', 'gyoo'], ['gyo', 'gyoh'],
+  ['bya', 'byah'], ['byu', 'byoo'], ['byo', 'byoh'],
+  ['pya', 'pyah'], ['pyu', 'pyoo'], ['pya', 'pyoh'],
+  ['tsu', 'tsoo'], ['chi', 'chee'], ['shi', 'shee'],
+
+  // 二重母音 (最重要：英語フォニックスでエイ/アウ/オイ等になるのを音節分解で物理阻止)
+  ['dai', 'dah ee'], ['kai', 'kah ee'], ['sai', 'sah ee'], ['tai', 'tah ee'],
+  ['nai', 'nah ee'], ['hai', 'hah ee'], ['mai', 'mah ee'], ['yai', 'yah ee'],
+  ['rai', 'rah ee'], ['wai', 'wah ee'], ['gai', 'gah ee'], ['zai', 'zah ee'],
+  ['bai', 'bah ee'], ['pai', 'pah ee'], ['ai', 'ah ee'],
+
+  ['toi', 'toh ee'], ['koi', 'koh ee'], ['soi', 'soh ee'], ['noi', 'noh ee'],
+  ['hoi', 'hoh ee'], ['moi', 'moh ee'], ['yoi', 'yoh ee'], ['roi', 'roh ee'],
+  ['goi', 'goh ee'], ['zoi', 'zoh ee'], ['boi', 'boh ee'], ['poi', 'poh ee'],
+  ['oi', 'oh ee'],
+
+  ['tui', 'too ee'], ['kui', 'koo ee'], ['sui', 'soo ee'], ['tsui', 'tsoo ee'],
+  ['nui', 'noo ee'], ['rui', 'roo ee'], ['gui', 'goo ee'], ['ui', 'oo ee'],
+
+  ['tei', 'teh ee'], ['kei', 'keh ee'], ['sei', 'seh ee'], ['nei', 'neh ee'],
+  ['hei', 'heh ee'], ['mei', 'meh ee'], ['rei', 'reh ee'], ['gei', 'gheh ee'],
+  ['zei', 'zeh ee'], ['bei', 'beh ee'], ['pei', 'peh ee'], ['ei', 'eh ee'],
+
+  // 長音 ou / uu
+  ['ryuu', 'ryoo'], ['chuu', 'choo'], ['shuu', 'shoo'], ['kyuu', 'kyoo'],
+  ['kou', 'koh'], ['sou', 'soh'], ['tou', 'toh'], ['nou', 'noh'],
+  ['hou', 'hoh'], ['mou', 'moh'], ['you', 'yoh'], ['rou', 'roh'],
+  ['gou', 'goh'], ['zou', 'zoh'], ['dou', 'doh'], ['bou', 'boh'],
+  ['shou', 'shoh'], ['chou', 'choh'], ['ryou', 'ryoh'], ['kyou', 'kyoh'],
+
+  // 2文字（子音 + 母音）
+  ['ka', 'kah'], ['ki', 'kee'], ['ku', 'koo'], ['ke', 'keh'], ['ko', 'koh'],
+  ['sa', 'sah'], ['si', 'shee'], ['su', 'soo'], ['se', 'seh'], ['so', 'soh'],
+  ['ta', 'tah'], ['ti', 'chee'], ['tu', 'tsoo'], ['te', 'teh'], ['to', 'toh'],
+  ['na', 'nah'], ['ni', 'nee'], ['nu', 'noo'], ['ne', 'neh'], ['no', 'noh'],
+  ['ha', 'hah'], ['hi', 'hee'], ['hu', 'foo'],  ['he', 'heh'], ['ho', 'hoh'],
+  ['ma', 'mah'], ['mi', 'mee'], ['mu', 'moo'], ['me', 'meh'], ['mo', 'moh'],
+  ['ya', 'yah'], ['yu', 'yoo'], ['yo', 'yoh'],
+  ['ra', 'rah'], ['ri', 'ree'], ['ru', 'roo'], ['re', 'reh'], ['ro', 'roh'],
+  ['wa', 'wah'], ['wo', 'woh'],
+  // 濁音・半濁音（ghee, gheh で軟音化ジェ/ジを物理阻止）
+  ['ga', 'gah'], ['gi', 'ghee'], ['gu', 'goo'], ['ge', 'gheh'], ['go', 'goh'],
+  ['za', 'zah'], ['ji', 'jee'],  ['zu', 'zoo'], ['ze', 'zeh'],  ['zo', 'zoh'],
+  ['da', 'dah'], ['di', 'jee'],  ['du', 'zoo'], ['de', 'deh'],  ['do', 'doh'],
+  ['ba', 'bah'], ['bi', 'bee'],  ['bu', 'boo'], ['be', 'beh'],  ['bo', 'boh'],
+  ['pa', 'pah'], ['pi', 'pee'],  ['pu', 'poo'], ['pe', 'peh'],  ['po', 'poh'],
+  ['fu', 'foo'],
+
+  // 単独母音（1文字）
+  ['a', 'ah'], ['i', 'ee'], ['u', 'oo'], ['e', 'eh'], ['o', 'oh']
+];
+
+function transliterateSyllables(romajiWord: string): string {
+  const w = romajiWord.toLowerCase();
+  const res: string[] = [];
+  let i = 0;
+  const n = w.length;
+
+  while (i < n) {
+    // 促音（っ: kk, tt, ss, pp 等）
+    if (i + 1 < n && w[i] === w[i+1] && 'bcdfghjklmpqrstvwxyz'.includes(w[i]) && w[i] !== 'n') {
+      res.push(w[i] + ' ');
+      i += 1;
+      continue;
+    }
+
+    // 撥音（ん: n）
+    if (w[i] === 'n') {
+      if (i + 1 === n || (!'aiueoy'.includes(w[i+1]) && !(i + 2 <= n && ['ya','yu','yo'].includes(w.substring(i+1, i+3))))) {
+        res.push('n');
+        i += 1;
+        continue;
+      }
+    }
+
+    let matched = false;
+    for (const [syl, rep] of SYLLABLE_MAP) {
+      if (w.startsWith(syl, i)) {
+        res.push(rep);
+        i += syl.length;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      res.push(w[i]);
+      i += 1;
+    }
+  }
+  return res.join(' ');
+}
+
+function applyPhoneticTransliteration(text: string): string {
+  const tokens = text.split(/([a-zA-Z0-9_\-]+|[^\s\w]+|\s+)/);
+  const out: string[] = [];
+
+  for (const t of tokens) {
+    if (!t) continue;
+    if (/^[a-zA-Z0-9_\-]+$/.test(t)) {
+      if (isProtectedEnglish(t) || ALREADY_PHONETIC_REGEX.test(t)) {
+        out.push(t);
+      } else {
+        out.push(transliterateSyllables(t));
+      }
+    } else {
+      out.push(t);
+    }
+  }
+  return out.join('').replace(/[ \t]+/g, ' ');
 }
 
 // Whisper向けローマ字の英語誤読を機械的に撲滅する置換テーブル
@@ -260,6 +405,9 @@ function sanitizePhoneticRomaji(text: string): string {
   for (const [pattern, replacement] of phonicsFixes) {
     r = r.replace(pattern, replacement);
   }
+
+  // ★一元フォニックス音節変換：残ったすべての未変換ローマ字単語を一網打尽に変換★
+  r = applyPhoneticTransliteration(r);
 
   r = r.replace(/[ \t]+/g, " ");
   return r;

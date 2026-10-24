@@ -4,6 +4,134 @@ import re
 import wave
 import subprocess
 
+
+# ★一元フォニックス音節変換エンジン (Syllabic Phonics Transliteration Engine)★
+PROTECTED_ENGLISH_WORDS = set([
+    'transformers', 'transformer', 'llm', 'local', 'community', 'docker',
+    'kubernetes', 'pytorch', 'gpu', 'api', 'model', 'parameter', 'parameters',
+    'tutorial', 'wine', 'marketing', 'saizeriya', 'saize', 'pre-trained',
+    'fine-tuning', 'ai', 'ui', 'web', 'github', 'actions', 'open', 'webui',
+    'prompt', 'prompts', 'token', 'tokens', 'agent', 'agents', 'code', 'data',
+    'cache', 'pipeline', 'workflow', 'server', 'client', 'json', 'python'
+])
+
+def is_protected_english(token: str) -> bool:
+    clean = re.sub(r'[^a-zA-Z\-]', '', token)
+    if not clean:
+        return True
+    if any(c.isupper() for c in clean):
+        return True
+    if clean.lower() in PROTECTED_ENGLISH_WORDS:
+        return True
+    return False
+
+ALREADY_PHONETIC_REGEX = re.compile(r'(?:[aeo]h|ee|oo|tsoo|ghee|gheh)\b', re.IGNORECASE)
+
+SYLLABLE_MAP = [
+    # 拗音・特殊音節 (3文字)
+    ('kya', 'kyah'), ('kyu', 'kyoo'), ('kyo', 'kyoh'),
+    ('sha', 'shah'), ('shu', 'shoo'), ('sho', 'shoh'),
+    ('cha', 'chah'), ('chu', 'choo'), ('cho', 'choh'),
+    ('nya', 'nyah'), ('nyu', 'nyoo'), ('nyo', 'nyoh'),
+    ('hya', 'hyah'), ('hyu', 'hyoo'), ('hyo', 'hyoh'),
+    ('mya', 'myah'), ('myu', 'myoo'), ('myo', 'myoh'),
+    ('rya', 'ryah'), ('ryu', 'ryoo'), ('ryo', 'ryoh'),
+    ('gya', 'gyah'), ('gyu', 'gyoo'), ('gyo', 'gyoh'),
+    ('bya', 'byah'), ('byu', 'byoo'), ('byo', 'byoh'),
+    ('pya', 'pyah'), ('pyu', 'pyoo'), ('pya', 'pyoh'),
+    ('tsu', 'tsoo'), ('chi', 'chee'), ('shi', 'shee'),
+
+    # 二重母音 (最重要：英語フォニックスでエイ/アウ/オイ等になるのを音節分解で物理阻止)
+    ('dai', 'dah ee'), ('kai', 'kah ee'), ('sai', 'sah ee'), ('tai', 'tah ee'),
+    ('nai', 'nah ee'), ('hai', 'hah ee'), ('mai', 'mah ee'), ('yai', 'yah ee'),
+    ('rai', 'rah ee'), ('wai', 'wah ee'), ('gai', 'gah ee'), ('zai', 'zah ee'),
+    ('bai', 'bah ee'), ('pai', 'pah ee'), ('ai', 'ah ee'),
+
+    ('toi', 'toh ee'), ('koi', 'koh ee'), ('soi', 'soh ee'), ('noi', 'noh ee'),
+    ('hoi', 'hoh ee'), ('moi', 'moh ee'), ('yoi', 'yoh ee'), ('roi', 'roh ee'),
+    ('goi', 'goh ee'), ('zoi', 'zoh ee'), ('boi', 'boh ee'), ('poi', 'poh ee'),
+    ('oi', 'oh ee'),
+
+    ('tui', 'too ee'), ('kui', 'koo ee'), ('sui', 'soo ee'), ('tsui', 'tsoo ee'),
+    ('nui', 'noo ee'), ('rui', 'roo ee'), ('gui', 'goo ee'), ('ui', 'oo ee'),
+
+    ('tei', 'teh ee'), ('kei', 'keh ee'), ('sei', 'seh ee'), ('nei', 'neh ee'),
+    ('hei', 'heh ee'), ('mei', 'meh ee'), ('rei', 'reh ee'), ('gei', 'gheh ee'),
+    ('zei', 'zeh ee'), ('bei', 'beh ee'), ('pei', 'peh ee'), ('ei', 'eh ee'),
+
+    # 長音 ou / uu
+    ('ryuu', 'ryoo'), ('chuu', 'choo'), ('shuu', 'shoo'), ('kyuu', 'kyoo'),
+    ('kou', 'koh'), ('sou', 'soh'), ('tou', 'toh'), ('nou', 'noh'),
+    ('hou', 'hoh'), ('mou', 'moh'), ('you', 'yoh'), ('rou', 'roh'),
+    ('gou', 'goh'), ('zou', 'zoh'), ('dou', 'doh'), ('bou', 'boh'),
+    ('shou', 'shoh'), ('chou', 'choh'), ('ryou', 'ryoh'), ('kyou', 'kyoh'),
+
+    # 2文字（子音 + 母音）
+    ('ka', 'kah'), ('ki', 'kee'), ('ku', 'koo'), ('ke', 'keh'), ('ko', 'koh'),
+    ('sa', 'sah'), ('si', 'shee'), ('su', 'soo'), ('se', 'seh'), ('so', 'soh'),
+    ('ta', 'tah'), ('ti', 'chee'), ('tu', 'tsoo'), ('te', 'teh'), ('to', 'toh'),
+    ('na', 'nah'), ('ni', 'nee'), ('nu', 'noo'), ('ne', 'neh'), ('no', 'noh'),
+    ('ha', 'hah'), ('hi', 'hee'), ('hu', 'foo'),  ('he', 'heh'), ('ho', 'hoh'),
+    ('ma', 'mah'), ('mi', 'mee'), ('mu', 'moo'), ('me', 'meh'), ('mo', 'moh'),
+    ('ya', 'yah'), ('yu', 'yoo'), ('yo', 'yoh'),
+    ('ra', 'rah'), ('ri', 'ree'), ('ru', 'roo'), ('re', 'reh'), ('ro', 'roh'),
+    ('wa', 'wah'), ('wo', 'woh'),
+    # 濁音・半濁音（ghee, gheh で軟音化ジェ/ジを物理阻止）
+    ('ga', 'gah'), ('gi', 'ghee'), ('gu', 'goo'), ('ge', 'gheh'), ('go', 'goh'),
+    ('za', 'zah'), ('ji', 'jee'),  ('zu', 'zoo'), ('ze', 'zeh'),  ('zo', 'zoh'),
+    ('da', 'dah'), ('di', 'jee'),  ('du', 'zoo'), ('de', 'deh'),  ('do', 'doh'),
+    ('ba', 'bah'), ('bi', 'bee'),  ('bu', 'boo'), ('be', 'beh'),  ('bo', 'boh'),
+    ('pa', 'pah'), ('pi', 'pee'),  ('pu', 'poo'), ('pe', 'peh'),  ('po', 'poh'),
+    ('fu', 'foo'),
+
+    # 単独母音（1文字）
+    ('a', 'ah'), ('i', 'ee'), ('u', 'oo'), ('e', 'eh'), ('o', 'oh')
+]
+
+def transliterate_syllables(romaji_word: str) -> str:
+    w = romaji_word.lower()
+    res = []
+    i = 0
+    n = len(w)
+    while i < n:
+        if i + 1 < n and w[i] == w[i+1] and w[i] in 'bcdfghjklmpqrstvwxyz' and w[i] != 'n':
+            res.append(w[i] + ' ')
+            i += 1
+            continue
+
+        if w[i] == 'n':
+            if i + 1 == n or (w[i+1] not in 'aiueoy' and not (i + 2 <= n and w[i+1:i+3] in ['ya','yu','yo'])):
+                res.append('n')
+                i += 1
+                continue
+
+        matched = False
+        for syl, rep in SYLLABLE_MAP:
+            if w.startswith(syl, i):
+                res.append(rep)
+                i += len(syl)
+                matched = True
+                break
+        if not matched:
+            res.append(w[i])
+            i += 1
+    return ' '.join(res)
+
+def apply_phonetic_transliteration(text: str) -> str:
+    tokens = re.split(r'([a-zA-Z0-9_\-]+|[^\s\w]+|\s+)', text)
+    out = []
+    for t in tokens:
+        if not t:
+            continue
+        if re.match(r'^[a-zA-Z0-9_\-]+$', t):
+            if is_protected_english(t) or ALREADY_PHONETIC_REGEX.search(t):
+                out.append(t)
+            else:
+                out.append(transliterate_syllables(t))
+        else:
+            out.append(t)
+    return re.sub(r'[ \t]+', ' ', ''.join(out))
+
 def sanitize_whisper_phonetics(text: str) -> str:
     """Eliminate English phonics mispronunciations for macOS Whisper voice, destroying silent-E and ambiguous vowels."""
     if not text:
@@ -103,6 +231,9 @@ def sanitize_whisper_phonetics(text: str) -> str:
 
     for pat, rep in word_map:
         r = re.sub(pat, rep, r, flags=re.IGNORECASE)
+
+    # ★一元フォニックス音節変換：残ったすべての未変換ローマ字単語を一網打尽に変換★
+    r = apply_phonetic_transliteration(r)
 
     r = re.sub(r'[ \t]+', ' ', r)
     return r
