@@ -64,7 +64,8 @@ const ROMAJI_CONVERT_PROMPT = `
 13. 「〜るん」->「roon」（run誤読防止）
 14. 助詞: 「は」->「wah」, 「で」->「deh」, 「の」->「noh」, 「と」->「toh」, 「だ」->「dah」
 15. 促音（っ）: 「naht tah」や「eet teh」のように重なりを表現。
-16. 単語の自然なまとまりを保ち、全文字にスペースを入れないこと。
+16. 息継ぎとポーズのために、文末にはピリオド（.）、文中の区切りにはカンマ（,）を必ず入れてください。
+17. 単語の自然なまとまりを保ち、全文字にスペースを入れないこと。
 
 解説やMarkdown引用符は含めず、変換後のローマ字テキストのみを出力してください。
 `;
@@ -194,8 +195,9 @@ export default {
     // 5. API: Trigger GitHub Actions Render
     if (url.pathname === "/api/generate" && request.method === "POST") {
       try {
-        const { script_romaji, rate = "128", pitch = "-15" } = (await request.json()) as {
+        const { script_romaji, script_japanese, rate = "128", pitch = "-15" } = (await request.json()) as {
           script_romaji: string;
+          script_japanese?: string;
           rate?: string;
           pitch?: string;
         };
@@ -232,6 +234,7 @@ export default {
               inputs: {
                 job_id: jobId,
                 script_romaji: script_romaji,
+                script_japanese: script_japanese || "",
                 rate: rate,
                 pitch_baseline: pitch,
                 callback_url: callbackUrl,
@@ -485,7 +488,7 @@ const UI_HTML = `<!DOCTYPE html>
 <body>
   <div class="container">
     <h1>★ インスタント・ゴノレゴ生成器 ★</h1>
-    <div class="banner">【2001年FLASH黄金期】Cloudflare Workers AI ✕ macOS Whisper 実機合成</div>
+    <div class="banner">【2001年FLASH黄金期】38歳葉花がサイゼリヤで熱弁（時々ワインを傾ける）✕ 巨大キネティック字幕 ✕ macOS Whisper 実機合成</div>
 
     <!-- STEP 1: AI台本自動生成 -->
     <div class="card">
@@ -627,10 +630,11 @@ const UI_HTML = `<!DOCTYPE html>
       videoContainer.style.display = "none";
 
       try {
+        const ja = document.getElementById("inputJa").value.trim();
         const res = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ script_romaji: romaji, rate, pitch })
+          body: JSON.stringify({ script_romaji: romaji, script_japanese: ja, rate, pitch })
         });
         const data = await res.json();
 

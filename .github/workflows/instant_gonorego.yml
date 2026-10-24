@@ -12,6 +12,11 @@ on:
         description: 'Tuned Romaji Script for MacinTalk Whisper'
         required: true
         type: string
+      script_japanese:
+        description: 'Original Japanese Script for Flash Subtitles'
+        required: false
+        type: string
+        default: ''
       rate:
         description: 'Speech Rate (Default: 128 for authentic Gonorego)'
         required: false
@@ -56,11 +61,17 @@ jobs:
           RATE="${{ inputs.rate }}"
           PBAS="${{ inputs.pitch_baseline }}"
           
-          # Write romaji script with speech tune tags
-          echo "[[rate ${RATE}]][[pbas ${PBAS}]][[pmod 0]]" > input_script.txt
-          cat << 'EOF' >> input_script.txt
+          # 1. Write raw romaji script
+          cat << 'EOF' > raw_script.txt
           ${{ inputs.script_romaji }}
           EOF
+
+          # 2. Inject authentic pauses and cadence ([[slnc <ms>]])
+          python prepare_voice_script.py raw_script.txt input_script_tuned.txt
+
+          # 3. Add rate and pitch baseline header
+          echo "[[rate ${RATE}]][[pbas ${PBAS}]][[pmod 0]]" > input_script.txt
+          cat input_script_tuned.txt >> input_script.txt
 
           echo "=== Generating Voice for Job: ${JOB_ID} ==="
           cat input_script.txt
@@ -72,14 +83,24 @@ jobs:
           afconvert -f WAVE -d LEI16 audio.aiff output.wav
           ls -la output.wav
 
-      - name: Render Video with Authentic Gonorego Flash Visual
+      - name: Render Video with 38yo Hakka Saizeriya Visual & Flash Subtitles
         id: video
         run: |
-          FFMPEG_BIN=$(python -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())")
-          echo "Using ffmpeg binary at: ${FFMPEG_BIN}"
-          $FFMPEG_BIN -y -loop 1 -i gonorego_authentic.jpg -i output.wav \
-            -c:v libx264 -tune stillimage -pix_fmt yuv420p \
-            -c:a aac -b:a 192k -shortest output.mp4
+          # 1. Prepare Japanese text for subtitles
+          cat << 'EOF' > input_japanese.txt
+          ${{ inputs.script_japanese }}
+          EOF
+
+          # If japanese script is empty, fallback to romaji for subtitles
+          if [ ! -s input_japanese.txt ]; then
+            cat input_script_tuned.txt > input_japanese.txt
+          fi
+
+          # 2. Generate ASS Subtitles linked to audio timing
+          python generate_subtitles.py input_japanese.txt output.wav subtitles.ass
+
+          # 3. Render 2-frame animation video with Hakka Saizeriya visuals & subtitles
+          python render_gonorego_video.py output.wav hakka_normal.jpg hakka_sip.jpg subtitles.ass output.mp4
           ls -la output.mp4
 
       - name: Upload to Cloudflare R2 (If configured)
