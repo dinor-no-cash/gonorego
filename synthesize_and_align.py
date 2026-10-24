@@ -4,6 +4,124 @@ import re
 import wave
 import subprocess
 
+def sanitize_whisper_phonetics(text: str) -> str:
+    """Eliminate English phonics mispronunciations for macOS Whisper voice."""
+    if not text:
+        return ""
+    r = text.strip()
+
+    word_map = [
+        # 固有名詞
+        (r'\bSaizeriya\b', "Sah ee zeh ree yah"),
+        (r'\bSaize\b', "Sah ee zeh"),
+        (r'\bYoshinoya\b', "Yoh shee noh yah"),
+        (r'\bGonorego\b', "Goh noh reh goh"),
+        (r'\bMacinTalk\b', "Mah keen tohk"),
+        (r'\bWhisper\b', "Whisper"),
+        # 英語単語とスペル重複によるサイレントE・長母音誤読防止
+        (r'\bmade\b', "mah deh"),
+        (r'\bmake\b', "mah keh"),
+        (r'\bsake\b', "sah keh"),
+        (r'\bname\b', "nah meh"),
+        (r'\btame\b', "tah meh"),
+        (r'\bsame\b', "sah meh"),
+        (r'\bkame\b', "kah meh"),
+        (r'\byome\b', "yoh meh"),
+        (r'\bhime\b', "hee meh"),
+        (r'\bdate\b', "dah teh"),
+        (r'\blate\b', "rah teh"),
+        (r'\bgate\b', "gah teh"),
+        (r'\bhate\b', "hah teh"),
+        (r'\bmate\b', "mah teh"),
+        (r'\bkite\b', "kee teh"),
+        (r'\bbite\b', "bee teh"),
+        (r'\bsite\b', "shee teh"),
+        (r'\bline\b', "ree neh"),
+        (r'\bfine\b', "foo ee neh"),
+        (r'\bmine\b', "mee neh"),
+        (r'\bnine\b', "nee neh"),
+        (r'\bpine\b', "pah ee neh"),
+        (r'\bhome\b', "hoh meh"),
+        (r'\bcome\b', "koh meh"),
+        (r'\bsome\b', "soh meh"),
+        (r'\btome\b', "toh meh"),
+        (r'\brose\b', "roh seh"),
+        (r'\bnose\b', "noh seh"),
+        (r'\bhose\b', "hoh seh"),
+        (r'\bdose\b', "doh seh"),
+        (r'\bcure\b', "koo reh"),
+        (r'\bpure\b', "poo reh"),
+        (r'\bsure\b', "soo reh"),
+        (r'\brude\b', "roo deh"),
+        (r'\btube\b', "tsoo beh"),
+        (r'\bfuse\b', "foo seh"),
+        (r'\bmuse\b', "moo seh"),
+        (r'\buse\b', "oo seh"),
+        (r'\bgive\b', "gee veh"),
+        (r'\blive\b', "ree veh"),
+        (r'\bhave\b', "hah veh"),
+        (r'\bone\b', "oh neh"),
+        (r'\bdone\b', "doh neh"),
+        (r'\bgone\b', "goh neh"),
+        (r'\bnone\b', "noh neh"),
+        (r'\bhere\b', "heh reh"),
+        (r'\bwere\b', "weh reh"),
+        (r'\bthere\b', "teh reh"),
+        (r'\bwhere\b', "weh reh"),
+        (r'\bmore\b', "moh reh"),
+        (r'\bsore\b', "soh reh"),
+        (r'\bkore\b', "koh reh"),
+        (r'\bare\b', "ah reh"),
+        (r'\bore\b', "oh reh"),
+        # 助詞・短音節
+        (r'\bha\b', "wah"),
+        (r'\bwa\b', "wah"),
+        (r'\bga\b', "gah"),
+        (r'\bde\b', "deh"),
+        (r'\bda\b', "dah"),
+        (r'\bto\b', "toh"),
+        (r'\bno\b', "noh"),
+        (r'\bso\b', "soh"),
+        (r'\bdo\b', "doh"),
+        (r'\bgo\b', "goh"),
+        (r'\bhe\b', "eh"),
+        (r'\bme\b', "meh"),
+        (r'\bhi\b', "hee"),
+        (r'\bby\b', "bah ee"),
+        (r'\bin\b', "een"),
+        (r'\bon\b', "ohn"),
+        (r'\bat\b', "aht"),
+        (r'\bup\b', "oo poo"),
+        (r'\bus\b', "oo soo"),
+        (r'\bam\b', "ahm"),
+        (r'\ban\b', "ahn"),
+        (r'\bas\b', "ahs"),
+        (r'\bit\b', "eet"),
+        (r'\bis\b', "ee soo"),
+        # 定番単語
+        (r'\bboke\b', "boh keh"),
+        (r'\baho\b', "ah hoh"),
+        (r'\bbaka\b', "bah kah"),
+        (r'\btokumori\b', "toh koo moh ree"),
+        (r'\btsuyudaku\b', "tsoo yoo dah koo"),
+        (r'\byo-shi\b', "yoh shee"),
+        (r'\bpapa\b', "pah pah"),
+        (r'\bkoichijikan\b', "koh ee chee jee kahn"),
+        (r'\btoitsumetai\b', "toh ee tsoo meh tie"),
+        (r'\bwain\b', "wah een"),
+        (r'\bwine\b', "wah een"),
+        (r'\bdecanter\b', "deh kahn tah"),
+        (r'\bdekanta\b', "deh kahn tah"),
+        (r'\bglass\b', "goo rah soo"),
+        (r'\bgurasu\b', "goo rah soo"),
+    ]
+
+    for pat, rep in word_map:
+        r = re.sub(pat, rep, r, flags=re.IGNORECASE)
+
+    r = re.sub(r'[ \t]+', ' ', r)
+    return r
+
 def format_ass_time(seconds: float) -> str:
     h = int(seconds // 3600)
     m = int((seconds % 3600) // 60)
@@ -101,6 +219,7 @@ def run_pipeline(ja_path: str, ro_path: str, rate: str, pbas: str, out_wav: str,
 
         # Remove any internal slnc tags for clean per-line synthesis
         ro_clean = re.sub(r'\[\[slnc\s+\d+\]\]', '', ro_line).strip()
+        ro_clean = sanitize_whisper_phonetics(ro_clean)
 
         part_script = f"parts/script_{i:03d}.txt"
         with open(part_script, "w", encoding="utf-8") as f:

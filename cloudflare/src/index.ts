@@ -41,34 +41,202 @@ const SCRIPT_GEN_PROMPT = `
 しかしこれをやると[重大なリスクやデメリット]という危険も伴う、諸刃の剣。素人にはおすすめしない。
 まあお前らド素人は、[初心者向けの無難な代替案]でも眺めてなさいってこった。
 
-出力はセリフ本文のみとし、最後の「〜ってこった。」まで完全に書ききってください。
+【超重要・出力制約】
+・最後の「〜ってこった。」で文章を絶対に終了してください。
+・「〜ってこった。」の後に、解説、注釈、感想、補足説明、挨拶などは絶対に1文字も出力してはなりません！
+・Markdown引用符（```）や見出し（#）は含めず、セリフ本文のみを出力してください。
 `;
 
 const ROMAJI_CONVERT_PROMPT = `
 あなたはmacOSの音声合成エンジン「say -v Whisper」用のローマ字変換エンジニアです。
 入力された日本語テキストの【意味やセリフの流れを一切変えず】、Whisperが滑らかかつ日本語らしく発音できるローマ字表記に変換してください。
 
-【最重要・英語誤読排除ルール】
-1. 「まで」->「ma deh」（英語過去形madeのメード誤読を排除）
-2. 「が」->「gah」（ジョージア州GAのジー・エー誤読を排除）
-3. 「それ」「俺」「これ」->「soh reh」「oh reh」「koh reh」
-4. 「範囲」->「hah nee」（honey誤読防止）
-5. 「人」->「hee toh」（hi誤読防止）
-6. 「その」「そこ」->「soh noh」「Soh koh」
-7. 「そん」->「Sohn」（son誤読防止）
-8. 「でも」->「deh moh」（demo誤読防止）
-9. 「とか」->「toh kah」（to誤読防止）
-10. 「ボケ」->「boh keh」（boke誤読防止）
-11. 「小一時間」->「Koh ee chee jee kahn」（こいちじかん）
-12. 「ない」「たい」->「nye」「tie」
-13. 「〜るん」->「roon」（run誤読防止）
-14. 助詞: 「は」->「wah」, 「で」->「deh」, 「の」->「noh」, 「と」->「toh」, 「だ」->「dah」
-15. 促音（っ）: 「naht tah」や「eet teh」のように重なりを表現。
-16. 息継ぎとポーズのために、文末にはピリオド（.）、文中の区切りにはカンマ（,）を必ず入れてください。
-17. 単語の自然なまとまりを保ち、全文字にスペースを入れないこと。
+【最重要・英語誤読排除ルール（Whisperは英語音素エンジンです）】
+英語単語とスペルが一致すると、英語の発音規則（サイレントEや長母音）で激しく誤読されます。必ず以下の音素表記に従ってください：
+1. 「サイゼリヤ」「サイゼ」->「Sah ee zeh ree yah」「Sah ee zeh」
+2. 「まで」->「mah deh」（英語madeのメード誤読を排除）
+3. 「が」->「gah」（ジョージア州GAのジー・エー誤読を排除）
+4. 「それ」「これ」「あれ」「俺」->「soh reh」「koh reh」「ah reh」「oh reh」
+5. 「お前」「お前ら」->「oh mah eh」「oh mah eh rah」
+6. 「酒」「ワイン」->「sah keh」「wah een」（sake/wineの英語誤読防止）
+7. 「範囲」->「hah nee」（honey誤読防止）
+8. 「人」->「hee toh」（hi誤読防止）
+9. 「その」「そこ」->「soh noh」「soh koh」
+10. 「そん」->「sohn」（son誤読防止）
+11. 「でも」->「deh moh」（demo誤読防止）
+12. 「とか」->「toh kah」（to誤読防止）
+13. 「ボケ」「アホ」「馬鹿」->「boh keh」「ah hoh」「bah kah」
+14. 「小一時間」->「koh ee chee jee kahn」
+15. 「問い詰めたい」->「toh ee tsoo meh tie」
+16. 「ない」「たい」->「nye」「tie」
+17. 「〜るん」->「roon」（run誤読防止）
+18. 助詞: 「は」->「wah」, 「で」->「deh」, 「の」->「noh」, 「と」->「toh」, 「だ」->「dah」
+19. 促音（っ）: 「naht tah」や「eet teh」「koht tah」のように二重子音で息止めを表現。
+20. 息継ぎとポーズのために、文末にはピリオド（.）、文中の区切りにはカンマ（,）を必ず入れてください。
+21. 最後の「〜ってこった。」（〜deh moh nah gah meh teh nah sigh tteh koht tah.）まで変換し、余計な解説は一切含めないこと。
 
 解説やMarkdown引用符は含めず、変換後のローマ字テキストのみを出力してください。
 `;
+
+// 台本から余計な解説文・末尾テキストを完全に切り落とすサニタイザー
+function cleanScriptText(raw: string): string {
+  if (!raw) return "";
+  let s = raw.trim();
+
+  // コードブロック除去
+  s = s.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/, "");
+
+  // 導入文除去
+  s = s.replace(/^(?:了解(?:いた)?しました|以下(?:は|が)?(?:台本|セリフ).*?です[：:\n]*)/i, "").trim();
+
+  // 最重要：終了アンカー「〜ってこった。」で以降をバッサリ切断
+  const endMatch = s.match(/([\s\S]*?(?:ってこった|てこった)[。！？!?\s]*)/);
+  if (endMatch && endMatch[1]) {
+    s = endMatch[1].trim();
+  } else {
+    // アンカーがない場合の保険切断
+    const cutoffMatch = s.match(/([\s\S]*?)(?:\n\s*(?:【(?:解説|注意|注釈|補足|ポイント)】|解説[:：]|注[:：]|Note:|###|\*\*\*|---))/i);
+    if (cutoffMatch && cutoffMatch[1]) {
+      s = cutoffMatch[1].trim();
+    }
+  }
+
+  return s;
+}
+
+// Whisper向けローマ字の英語誤読を機械的に撲滅する置換テーブル
+function sanitizePhoneticRomaji(text: string): string {
+  if (!text) return "";
+  let r = text.trim();
+
+  // コードブロック除去
+  r = r.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/, "");
+
+  // 終了アンカー以降の切り落とし
+  const endMatch = r.match(/([\s\S]*?(?:teh\s+koht\s+tah|tteh\s+kotta|teh\s+kohht|kotta)[.!?\s]*)/i);
+  if (endMatch && endMatch[1]) {
+    r = endMatch[1].trim();
+  } else {
+    const cutoffMatch = r.match(/([\s\S]*?)(?:\n\s*(?:Note:|Explanation:|###|\*\*\*|---))/i);
+    if (cutoffMatch && cutoffMatch[1]) {
+      r = cutoffMatch[1].trim();
+    }
+  }
+
+  const wordMap: [RegExp, string][] = [
+    // 固有名詞
+    [/\bSaizeriya\b/gi, "Sah ee zeh ree yah"],
+    [/\bSaize\b/gi, "Sah ee zeh"],
+    [/\bYoshinoya\b/gi, "Yoh shee noh yah"],
+    [/\bGonorego\b/gi, "Goh noh reh goh"],
+    [/\bMacinTalk\b/gi, "Mah keen tohk"],
+    [/\bWhisper\b/gi, "Whisper"],
+    // 英語単語と完全一致して誤読される要注意単語
+    [/\bmade\b/gi, "mah deh"],
+    [/\bmake\b/gi, "mah keh"],
+    [/\bsake\b/gi, "sah keh"],
+    [/\bname\b/gi, "nah meh"],
+    [/\btame\b/gi, "tah meh"],
+    [/\bsame\b/gi, "sah meh"],
+    [/\bkame\b/gi, "kah meh"],
+    [/\byome\b/gi, "yoh meh"],
+    [/\bhime\b/gi, "hee meh"],
+    [/\bdate\b/gi, "dah teh"],
+    [/\blate\b/gi, "rah teh"],
+    [/\bgate\b/gi, "gah teh"],
+    [/\bhate\b/gi, "hah teh"],
+    [/\bmate\b/gi, "mah teh"],
+    [/\bkite\b/gi, "kee teh"],
+    [/\bbite\b/gi, "bee teh"],
+    [/\bsite\b/gi, "shee teh"],
+    [/\bline\b/gi, "ree neh"],
+    [/\bfine\b/gi, "foo ee neh"],
+    [/\bmine\b/gi, "mee neh"],
+    [/\bnine\b/gi, "nee neh"],
+    [/\bpine\b/gi, "pah ee neh"],
+    [/\bhome\b/gi, "hoh meh"],
+    [/\bcome\b/gi, "koh meh"],
+    [/\bsome\b/gi, "soh meh"],
+    [/\btome\b/gi, "toh meh"],
+    [/\brose\b/gi, "roh seh"],
+    [/\bnose\b/gi, "noh seh"],
+    [/\bhose\b/gi, "hoh seh"],
+    [/\bdose\b/gi, "doh seh"],
+    [/\bcure\b/gi, "koo reh"],
+    [/\bpure\b/gi, "poo reh"],
+    [/\bsure\b/gi, "soo reh"],
+    [/\brude\b/gi, "roo deh"],
+    [/\btube\b/gi, "tsoo beh"],
+    [/\bfuse\b/gi, "foo seh"],
+    [/\bmuse\b/gi, "moo seh"],
+    [/\buse\b/gi, "oo seh"],
+    [/\bgive\b/gi, "gee veh"],
+    [/\blive\b/gi, "ree veh"],
+    [/\bhave\b/gi, "hah veh"],
+    [/\bone\b/gi, "oh neh"],
+    [/\bdone\b/gi, "doh neh"],
+    [/\bgone\b/gi, "goh neh"],
+    [/\bnone\b/gi, "noh neh"],
+    [/\bhere\b/gi, "heh reh"],
+    [/\bwere\b/gi, "weh reh"],
+    [/\bthere\b/gi, "teh reh"],
+    [/\bwhere\b/gi, "weh reh"],
+    [/\bmore\b/gi, "moh reh"],
+    [/\bsore\b/gi, "soh reh"],
+    [/\bkore\b/gi, "koh reh"],
+    [/\bare\b/gi, "ah reh"],
+    [/\bore\b/gi, "oh reh"],
+    // 助詞および短い単音節
+    [/\bha\b/gi, "wah"],
+    [/\bwa\b/gi, "wah"],
+    [/\bga\b/gi, "gah"],
+    [/\bde\b/gi, "deh"],
+    [/\bda\b/gi, "dah"],
+    [/\bto\b/gi, "toh"],
+    [/\bno\b/gi, "noh"],
+    [/\bso\b/gi, "soh"],
+    [/\bdo\b/gi, "doh"],
+    [/\bgo\b/gi, "goh"],
+    [/\bhe\b/gi, "eh"],
+    [/\bme\b/gi, "meh"],
+    [/\bhi\b/gi, "hee"],
+    [/\bby\b/gi, "bah ee"],
+    [/\bin\b/gi, "een"],
+    [/\bon\b/gi, "ohn"],
+    [/\bat\b/gi, "aht"],
+    [/\bup\b/gi, "oo poo"],
+    [/\bus\b/gi, "oo soo"],
+    [/\bam\b/gi, "ahm"],
+    [/\ban\b/gi, "ahn"],
+    [/\bas\b/gi, "ahs"],
+    [/\bit\b/gi, "eet"],
+    [/\bis\b/gi, "ee soo"],
+    // 定番単語
+    [/\bboke\b/gi, "boh keh"],
+    [/\baho\b/gi, "ah hoh"],
+    [/\bbaka\b/gi, "bah kah"],
+    [/\btokumori\b/gi, "toh koo moh ree"],
+    [/\btsuyudaku\b/gi, "tsoo yoo dah koo"],
+    [/\byo-shi\b/gi, "yoh shee"],
+    [/\bpapa\b/gi, "pah pah"],
+    [/\bkoichijikan\b/gi, "koh ee chee jee kahn"],
+    [/\btoitsumetai\b/gi, "toh ee tsoo meh tie"],
+    [/\bwain\b/gi, "wah een"],
+    [/\bwine\b/gi, "wah een"],
+    [/\bdecanter\b/gi, "deh kahn tah"],
+    [/\bdekanta\b/gi, "deh kahn tah"],
+    [/\bglass\b/gi, "goo rah soo"],
+    [/\bgurasu\b/gi, "goo rah soo"],
+  ];
+
+  for (const [pattern, replacement] of wordMap) {
+    r = r.replace(pattern, replacement);
+  }
+
+  r = r.replace(/[ \t]+/g, " ");
+  return r;
+}
+
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -106,7 +274,8 @@ export default {
           max_tokens: 2048,
         });
 
-        const script = aiRes.response.trim();
+        const rawScript = aiRes.response.trim();
+        const script = cleanScriptText(rawScript);
         return new Response(JSON.stringify({ script }), { headers: corsHeaders });
       } catch (err: any) {
         return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
@@ -129,7 +298,8 @@ export default {
           max_tokens: 2048,
         });
 
-        const romaji = aiRes.response.trim();
+        const rawRomaji = aiRes.response.trim();
+        const romaji = sanitizePhoneticRomaji(rawRomaji);
         return new Response(JSON.stringify({ romaji }), { headers: corsHeaders });
       } catch (err: any) {
         return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
@@ -195,7 +365,14 @@ export default {
     // 5. API: Trigger GitHub Actions Render
     if (url.pathname === "/api/generate" && request.method === "POST") {
       try {
-        const { script_romaji, script_japanese, rate = "128", pitch = "-15" } = (await request.json()) as {
+        const { script_romaji: inRomaji, script_japanese: inJapanese, rate = "128", pitch = "-15" } = (await request.json()) as {
+          script_romaji: string;
+          script_japanese?: string;
+          rate?: string;
+          pitch?: string;
+        };
+        const script_romaji = sanitizePhoneticRomaji(inRomaji);
+        const script_japanese = cleanScriptText(inJapanese || "");
           script_romaji: string;
           script_japanese?: string;
           rate?: string;
