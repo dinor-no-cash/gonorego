@@ -6,24 +6,13 @@ import subprocess
 
 
 # ★一元フォニックス音節変換エンジン (Syllabic Phonics Transliteration Engine)★
-PROTECTED_ENGLISH_WORDS = set([
-    'transformers', 'transformer', 'llm', 'local', 'community', 'docker',
-    'kubernetes', 'pytorch', 'gpu', 'api', 'model', 'parameter', 'parameters',
-    'tutorial', 'wine', 'marketing', 'saizeriya', 'saize', 'pre-trained',
-    'fine-tuning', 'ai', 'ui', 'web', 'github', 'actions', 'open', 'webui',
-    'prompt', 'prompts', 'token', 'tokens', 'agent', 'agents', 'code', 'data',
-    'cache', 'pipeline', 'workflow', 'server', 'client', 'json', 'python'
-])
-
+# ★辞書完全撤廃：大文字を含む単語（Title Case外来語・英単語・略称）を100%自動保護★
 def is_protected_english(token: str) -> bool:
     clean = re.sub(r'[^a-zA-Z\-]', '', token)
     if not clean:
         return True
-    if any(c.isupper() for c in clean):
-        return True
-    if clean.lower() in PROTECTED_ENGLISH_WORDS:
-        return True
-    return False
+    # 大文字が含まれている（例: Transformers, LLM, Local, Community, Wine, Model, Framework等）は100%英語として無条件保護
+    return any(c.isupper() for c in clean)
 
 ALREADY_PHONETIC_REGEX = re.compile(r'(?:[aeo]h|ee|oo|tsoo|ghee|gheh)\b', re.IGNORECASE)
 
@@ -179,7 +168,7 @@ def sanitize_whisper_phonetics(text: str) -> str:
         (r'\bomaera\b', "oh mah eh rah"),
         (r'\bomae-ra\b', "oh mah eh rah"),
         # 「なさい」「ながめて」
-        (r'\bnasai\b', "nah sigh"),
+        (r'\bnasai\b', "nah sah ee"),
         (r'\bnagamete\b', "nah gah meh teh"),
 
         # 誤爆したToransufaamazuの救済

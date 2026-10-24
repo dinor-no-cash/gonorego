@@ -57,8 +57,10 @@ Whisperは米語（米国英語）エンジンです。日本語をそのまま�
 【原則1：英単語はそのまま残す】
 テキスト内のアルファベット英単語（Transformers, LLM, Docker, Kubernetes, PyTorch, GPU, API等）は絶対にカタカナ化せず、英単語のスペルを100%維持する。
 
-【原則2：カタカナ外来語は英語スペルにする】
-英語由来のカタカナ語（ローカル->local, コミュニティ->community, チュートリアル->tutorial, モデル->model, ワイン->wine, マーケティング->marketing等）は、自律的に元の英語スペルに変換する。
+【原則2：カタカナ外来語は【必ず先頭大文字】の英語スペルにする（最重要！）】
+英語由来のカタカナ語（ローカル->Local, コミュニティ->Community, チュートリアル->Tutorial, モデル->Model, ワイン->Wine, マーケティング->Marketing, フレームワーク->Framework等）は、自律的に元の英語スペルに変換し、【必ず先頭を大文字（Title Case）】にしてください。
+※先頭を大文字にすることで、システムが辞書なしで100%確実に英単語として認識・保護します！
+※逆に日本語のローマ字は【必ずすべて小文字】で出力してください（例：kino, daikibo, kaihatsu, niwaka）。
 
 【原則3：日本語の『a』『i』『e』の母音フォニックス工夫（超重要！）】
 英語のサイレントE・長母音誤読を物理的に防ぐため、日本語の母音を以下のように工夫してください：
@@ -96,11 +98,11 @@ Whisperは米語（米国英語）エンジンです。日本語をそのまま�
 まあお前らド素人は、事前学習済みモデルのパラメーターでも眺めてなさいってこった。
 
 出力：
-sonna koto yori kiite kure yo ichi yo. kino, local LLM noh kah ee hah tsoo community itta n desu.
+sonna koto yori kiite kure yo ichi yo. kino, Local LLM noh kah ee hah tsoo Community itta n desu.
 mou mee teh rahn nye. tsukatte mee teh doh dah tah kah kiite mee tai.
 tonari no yatsu gah, toriaezu Transformers deh, toh ka itte ru n desu. soh koh deh mata buchi kee reh desu yo.
 ko ichi jikan toi tsume tai. moroha no tsurugi. shee roh oo toh ni wa osusume shi nai.
-maa oh mah eh rah do shee roh oo toh wa, pre-trained model no parameter demo nah gah meh teh nah sigh tte kotta.
+maa oh mah eh rah do shee roh oo toh wa, Pre-trained Model no Parameter demo nah gah meh teh nah sah ee tte kotta.
 
 【厳格なフォーマット制約】
 ・入力の行数と出力の行数を完全に一致（1対1）させてください。
@@ -145,22 +147,12 @@ function cleanScriptText(raw: string): string {
 }
 
 // ★一元フォニックス音節変換エンジン (Syllabic Phonics Transliteration Engine)★
-// 英語として保護する英単語・技術用語・外来語
-const PROTECTED_ENGLISH_WORDS = new Set([
-  'transformers', 'transformer', 'llm', 'local', 'community', 'docker',
-  'kubernetes', 'pytorch', 'gpu', 'api', 'model', 'parameter', 'parameters',
-  'tutorial', 'wine', 'marketing', 'saizeriya', 'saize', 'pre-trained',
-  'fine-tuning', 'ai', 'ui', 'web', 'github', 'actions', 'open', 'webui',
-  'prompt', 'prompts', 'token', 'tokens', 'agent', 'agents', 'code', 'data',
-  'cache', 'pipeline', 'workflow', 'server', 'client', 'json', 'python'
-]);
-
+// ★辞書完全撤廃：大文字を含む単語（Title Case外来語・英単語・略称）を100%自動保護★
 function isProtectedEnglish(token: string): boolean {
   const clean = token.replace(/[^a-zA-Z\-]/g, '');
   if (!clean) return true;
-  if (/[A-Z]/.test(clean)) return true;
-  if (PROTECTED_ENGLISH_WORDS.has(clean.toLowerCase())) return true;
-  return false;
+  // 大文字が含まれている（例: Transformers, LLM, Local, Community, Wine, Model, Framework等）は100%英語として無条件保護
+  return /[A-Z]/.test(clean);
 }
 
 // 既にフォニックス化済みの音節か判定
@@ -352,7 +344,7 @@ function sanitizePhoneticRomaji(text: string): string {
     [/\bomaera\b/gi, "oh mah eh rah"],
     [/\bomae-ra\b/gi, "oh mah eh rah"],
     // 「なさい」「ながめて」
-    [/\bnasai\b/gi, "nah sigh"],
+    [/\bnasai\b/gi, "nah sah ee"],
     [/\bnagamete\b/gi, "nah gah meh teh"],
 
     // 誤爆したToransufaamazuの救済
