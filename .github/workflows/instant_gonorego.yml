@@ -97,7 +97,7 @@ jobs:
           fi
 
           # 2. Generate ASS Subtitles linked to audio timing
-          python generate_subtitles.py input_japanese.txt output.wav subtitles.ass
+          python generate_subtitles.py input_japanese.txt output.wav subtitles.ass input_script_tuned.txt
 
           # 3. Render 2-frame animation video with Hakka Saizeriya visuals & subtitles
           python render_gonorego_video.py output.wav hakka_normal.jpg hakka_sip.jpg subtitles.ass output.mp4
