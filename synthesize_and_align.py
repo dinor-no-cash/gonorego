@@ -5,88 +5,31 @@ import wave
 import subprocess
 
 def sanitize_whisper_phonetics(text: str) -> str:
-    """Eliminate English phonics mispronunciations for macOS Whisper voice and enforce authentic Gonorego speech."""
+    """Eliminate English phonics mispronunciations for macOS Whisper voice and guard key Gonorego phrases."""
     if not text:
         return ""
     r = text.strip()
 
     word_map = [
-        # 冒頭の日本語残り防止
-        (r'そんな事より聞いてくれよ(?:１|1|一)?よ?', "sonna koto yori kiite kureyo ichi yo"),
+        # 万が一の日本語残り・誤爆に対する最低限の安全ガード
+        (r'そんな事より聞いてくれよ(?:１|1|一)?よ?', "sonna koto yori kiite kure yo ichi yo"),
         (r'昨日', "kino"),
         (r'サイゼリヤ', "Saizeriya"),
         (r'サイゼ', "Saize"),
-
-        # ★重要：英単語のカタカナ化誤爆を英語スペルへ完全復元★
+        # 誤爆したToransufaamazuの救済
         (r'\b(?:toransufaamazu|toransufaamaa)\b', "Transformers"),
         (r'トランスフォーマーズ?', "Transformers"),
-
-        # ★重要：カタカナ語・外来語を英語スペルへ置換（Whisperネイティブ発音）★
-        (r'ローカル', "local"),
-        (r'\b(?:rookaaru|rokaru|ro-karu)\b', "local"),
-        (r'コミュニティ', "community"),
-        (r'\b(?:komyunitei|komyuniti)\b', "community"),
-        (r'チュートリアル', "tutorial"),
-        (r'\b(?:chyuutoriaru|chuutoriaru)\b', "tutorial"),
-        (r'モデル', "model"),
-        (r'\b(?:moderu|mode\s*ru)\b', "model"),
-        (r'ハードウェア', "hardware"),
-        (r'\b(?:haado\s*uea|haadowea)\b', "hardware"),
-        (r'ソフトウェア', "software"),
-        (r'\b(?:sofutouea|sofutowea)\b', "software"),
-        (r'データセット', "dataset"),
-        (r'\b(?:deeta\s*setto)\b', "dataset"),
-        (r'カスタム', "custom"),
-        (r'\b(?:kasutamu)\b', "custom"),
-        (r'キュー', "queue"),
-        (r'\b(?:kyuu)\b', "queue"),
-        (r'ワイン', "wine"),
-        (r'\b(?:wain|wah\s*een)\b', "wine"),
-        (r'マーケティング', "marketing"),
-        (r'\b(?:maketingu)\b', "marketing"),
-        (r'グラス', "glass"),
-        (r'\b(?:gurasu)\b', "glass"),
-        (r'デカンタ', "decanter"),
-        (r'\b(?:dekanta)\b', "decanter"),
-        (r'コスト', "cost"),
-        (r'\b(?:kosuto)\b', "cost"),
-        (r'リスク', "risk"),
-        (r'\b(?:risuku)\b', "risk"),
-        (r'フルーツジュース', "fruit juice"),
-        (r'\b(?:furu-tsu\s*ju-su|furuutsu\s*juusu)\b', "fruit juice"),
-        (r'カベルネ・ソーヴィニヨン', "Cabernet Sauvignon"),
-        (r'\b(?:kaberune\s*so-viniyon|kabuerune\s*souviniyon)\b', "Cabernet Sauvignon"),
-        (r'ビオディナミック', "biodynamic"),
-        (r'\b(?:biodinamikku)\b', "biodynamic"),
-        (r'エンジニア', "engineer"),
-        (r'セキュリティ', "security"),
-
-        # ★重要：日本語の読み間違い・ゴノレゴ構文の厳格固定★
-        (r'\b(?:toikurumetai|toitsumetai|toishimetai|toi\s*tsume\s*tai)\b', "toi tsume tai"),
-        (r'問(?:い)?(?:詰|くる)めたい', "toi tsume tai"),
-        (r'\b(?:sho\s*ichi\s*jikan|shoichijikan|shouichijikan|ko\s*ichi\s*jikan|koichijikan)\b', "ko ichi jikan"),
-        (r'小一時間', "ko ichi jikan"),
-        (r'\b(?:moro\s*no\s*yaiba|moronoyaiba|moroha\s*no\s*tsurugi|morohanotsurugi)\b', "moroha no tsurugi"),
-        (r'諸刃の(?:剣|刃)', "moroha no tsurugi"),
-        (r'\b(?:buchikire|buchi\s*kire|buchikeereh|buchi\s*kee\s*reh)\b', "buchi kee reh"),
-        (r'(?:ブチ|ぶち)(?:切|き)れ', "buchi kee reh"),
-        (r'\b(?:do\s*sujin|doshirouto|do\s*shirouto|doh\s*shee\s*roh\s*oo\s*toh)\b', "do shirouto"),
-        (r'\b(?:sujin|shirouto|shee\s*roh\s*oo\s*toh)\b', "shirouto"),
-        (r'ド素人', "do shirouto"),
-        (r'素人', "shirouto"),
-        (r'\b(?:hayari|hayarin|ryuukou|ryoukou)\b', "ryuukou"),
-        (r'最新流行', "saishin ryuukou"),
-        (r'流行', "ryuukou"),
-        (r'\b(?:tsu)\b', "tsuu"),
-        (r'ワイン通', "wine tsuu"),
-        (r'通', "tsuu"),
-        (r'\bichi\s*yo\b', "ichi yo"),
+        # 頻出キーワードの固定ガード
+        (r'\b(?:toikurumetai|toitsumetai|toishimetai)\b', "toi tsume tai"),
+        (r'\b(?:sho\s*ichi\s*jikan|shoichijikan|shouichijikan)\b', "ko ichi jikan"),
+        (r'\b(?:moro\s*no\s*yaiba|moronoyaiba)\b', "moroha no tsurugi"),
+        (r'\b(?:buchikire|buchi\s*kire)\b', "buchi kee reh"),
+        (r'\b(?:sujin)\b', "shirouto"),
+        (r'\b(?:do\s*sujin|dosujin)\b', "do shirouto"),
+        (r'\b(?:hayari|hayarin)\b', "ryuukou"),
         (r'\b(?:tte\s+)?kotta\b', "tte kotta"),
-        (r'\bboke\s*ga\b', "boke gah"),
-        (r'\baho\s*ka\s*to\b', "aho kah toh"),
-        (r'\bbaka\s*ka\s*to\b', "baka kah toh"),
-
-        # 日本語ローマ字が英語フォニックスでサイレントE誤読される問題の防止
+        (r'\bichi\s*yo\b', "ichi yo"),
+        # 日本語の短音節が英語フォニックスでサイレントE誤読される問題の防止
         (r'\bmade\b', "mah deh"),
         (r'\bmake\b', "mah keh"),
         (r'\bsake\b', "sah keh"),
@@ -104,26 +47,8 @@ def sanitize_whisper_phonetics(text: str) -> str:
         (r'\bkite\b', "kee teh"),
         (r'\bbite\b', "bee teh"),
         (r'\bsite\b', "shee teh"),
-        (r'\bhome\b', "hoh meh"),
-        (r'\bcome\b', "koh meh"),
-        (r'\bsome\b', "soh meh"),
-        (r'\btome\b', "toh meh"),
-        (r'\brose\b', "roh seh"),
-        (r'\bnose\b', "noh seh"),
-        (r'\bcure\b', "koo reh"),
-        (r'\bpure\b', "poo reh"),
-        (r'\bsure\b', "soo reh"),
-        (r'\brude\b', "roo deh"),
-        (r'\btube\b', "tsoo beh"),
-        (r'\bmore\b', "moh reh"),
-        (r'\bsore\b', "soh reh"),
-        (r'\bkore\b', "koh reh"),
-        (r'\bare\b', "ah reh"),
-        (r'\bore\b', "oh reh"),
         (r'\bomae\b', "oh mah eh"),
         (r'\bomae-ra\b', "oh mah eh rah"),
-        (r'\bsono\b', "soh noh"),
-        (r'\bsoko\b', "soh koh"),
         (r'\bakero\b', "ah keh roh"),
     ]
 
