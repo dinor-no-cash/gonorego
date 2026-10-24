@@ -23,6 +23,7 @@ const SCRIPT_GEN_PROMPT = `
 5. オチは必ず「[テーマ]通の俺から言わせてもらえば今、通の間での最新流行はやっぱり[マニアックな本質・プロのこだわり]、これだね。」から始めること。
 6. 「これが通の頼み方。」を述べた後、必ず「しかしこれをやると[大量のリスクやデメリット]という危険も伴う、諸刃の剣。素人にはおすすめしない。」を含めること。
 7. 最後の締めは必ず「まあお前らド素人は、[初心者向けの無難・ダサい代替案]でも[やってろ/眺めてなさい]ってこった。」で終わること。
+8. 途中で文章を切らず、必ず最後のオチ「〜ってこった。」まで完全に完結させて出力すること。
 
 出力は余計な前置きや解説（「承知しました」「以下が台本です」など）を一切省き、セリフ本文のみを出力してください。
 `;
@@ -85,6 +86,7 @@ export default {
             { role: "system", content: SCRIPT_GEN_PROMPT.trim() },
             { role: "user", content: `テーマ: ${theme}` },
           ],
+          max_tokens: 2048,
         });
 
         const script = aiRes.response.trim();
@@ -107,6 +109,7 @@ export default {
             { role: "system", content: ROMAJI_CONVERT_PROMPT.trim() },
             { role: "user", content: `次の日本語をWhisper用ローマ字に変換してください:\n${text}` },
           ],
+          max_tokens: 2048,
         });
 
         const romaji = aiRes.response.trim();
