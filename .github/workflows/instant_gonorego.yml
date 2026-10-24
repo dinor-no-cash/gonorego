@@ -56,24 +56,26 @@ jobs:
 
       - name: Synthesize Voice & Generate True-Synchronized Subtitles
         id: synth
+        env:
+          SCRIPT_JA: ${{ inputs.script_japanese }}
+          SCRIPT_RO: ${{ inputs.script_romaji }}
         run: |
           JOB_ID="${{ inputs.job_id }}"
           RATE="${{ inputs.rate }}"
           PBAS="${{ inputs.pitch_baseline }}"
           
-          # 1. Write inputs
-          cat << 'EOF' > input_japanese.txt
-          ${{ inputs.script_japanese }}
+          # 1. Safely write inputs via Python UTF-8 writer
+          python - << 'EOF'
+          import os
+          ja = os.environ.get('SCRIPT_JA', '').strip()
+          ro = os.environ.get('SCRIPT_RO', '').strip()
+          with open('input_japanese.txt', 'w', encoding='utf-8') as f:
+              f.write(ja if ja else ro)
+          with open('raw_script.txt', 'w', encoding='utf-8') as f:
+              f.write(ro if ro else ja)
           EOF
 
-          cat << 'EOF' > raw_script.txt
-          ${{ inputs.script_romaji }}
-          EOF
-
-          # If japanese script is empty, fallback to romaji
-          if [ ! -s input_japanese.txt ]; then
-            cat raw_script.txt > input_japanese.txt
-          fi
+          ls -la input_japanese.txt raw_script.txt
 
           # 2. Line-by-line Whisper synthesis and exact millisecond subtitle synchronization
           python synthesize_and_align.py input_japanese.txt raw_script.txt "${RATE}" "${PBAS}" output.wav subtitles.ass

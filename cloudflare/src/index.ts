@@ -472,9 +472,14 @@ export default {
       }
     }
 
-    // Default: Serve Full Retro UI HTML
+    // Default: Serve Full Retro UI HTML (Strict no-cache to guarantee latest JS)
     return new Response(UI_HTML, {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+      },
     });
   },
 };
@@ -726,13 +731,15 @@ const UI_HTML = `<!DOCTYPE html>
   </div>
 
   <script>
-    // 1. テーマから台本自動執筆
+    // 1. テーマから台本自動執筆 & 自動調声変換
     async function generateScriptFromTheme() {
       const theme = document.getElementById("inputTheme").value.trim();
       if (!theme) return alert("テーマを入力してください！（例: Docker環境、新NISA、PHP脆弱性など）");
 
       const inputJa = document.getElementById("inputJa");
+      const preview = document.getElementById("previewRomaji");
       inputJa.value = "Workers AI が吉野家コピペ構文で台本を執筆中...";
+      preview.value = "台本完成後に最新音素ルールで自動調声します...";
 
       try {
         const res = await fetch("/api/generate-script", {
@@ -743,11 +750,15 @@ const UI_HTML = `<!DOCTYPE html>
         const data = await res.json();
         if (data.script) {
           inputJa.value = data.script;
+          // 台本生成完了後、直ちに最新のWhisper調声変換を自動実行！
+          await convertText();
         } else {
           inputJa.value = "生成失敗: " + (data.error || "不明なエラー");
+          preview.value = "";
         }
       } catch (err) {
         inputJa.value = "通信エラー: " + err.message;
+        preview.value = "";
       }
     }
 
@@ -776,17 +787,20 @@ const UI_HTML = `<!DOCTYPE html>
       }
     }
 
-    // 3. 動画生成リクエスト
+    // 3. 動画生成リクエスト（最新の調声を完全同期）
     async function startGeneration() {
+      const ja = document.getElementById("inputJa").value.trim();
+      if (!ja) return alert("台本を入力するか、テーマから台本を生成してください！");
+
       let romaji = document.getElementById("previewRomaji").value.trim();
-      if (!romaji) {
-        const ja = document.getElementById("inputJa").value.trim();
-        if (!ja) return alert("台本を入力するか、テーマから台本を生成してください！");
+      if (!romaji || romaji.startsWith("Workers AI") || romaji.startsWith("台本完成後")) {
         await convertText();
         romaji = document.getElementById("previewRomaji").value.trim();
       }
 
-      if (!romaji) return alert("ローマ字スクリプトの準備ができませんでした。");
+      if (!romaji || romaji.startsWith("変換エラー") || romaji.startsWith("通信エラー")) {
+        return alert("ローマ字スクリプトの準備ができませんでした。");
+      }
 
       const rate = document.getElementById("rateSelect").value;
       const pitch = document.getElementById("pitchSelect").value;
