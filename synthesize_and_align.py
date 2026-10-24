@@ -204,7 +204,9 @@ def sanitize_whisper_phonetics(text: str) -> str:
         (r'\b(?:sujin)\b', "shee roh oo toh"),
         (r'\b(?:do\s*sujin|dosujin)\b', "do shee roh oo toh"),
         (r'\b(?:shirouto)\b', "shee roh oo toh"),
-        (r'\b(?:hayari|hayarin)\b', "ryuukou"),
+        # 流行んねーの誤読（りゅうこうんねー）救済
+        (r'\b(?:ryuukou\s*n\s*nee|ryuukou\s*nee|ryuukounnee)\b', "hayannee"),
+        (r'\b(?:ryuukou\s*n\s*nai|ryuukounai)\b', "hayaranai"),
         (r'\b(?:tte\s+)?kotta\b', "tte kotta"),
         (r'\bichi\s*yo\b', "ichi yo"),
 

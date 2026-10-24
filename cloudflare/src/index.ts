@@ -73,7 +73,9 @@ const ROMAJI_CONVERT_PROMPT = `
    ・諸刃の剣 -> moroha no tsurugi
    ・小一時間問い詰めたい -> ko ichi jikan toitsumetai
    ・ブチ切れ -> buchikire
-   ・最新流行 -> saishin ryuukou
+   ・最新流行 -> saishin ryuukou （※熟語の流行は「りゅうこう」）
+   ・流行んねー -> hayannee （※動詞・口語の「流行んねー」は必ず「はやんねー」と読む！「りゅうこうんねー」は絶対禁止！）
+   ・流行らない -> hayaranai
    ・眺めてなさいってこった -> nagamete nasai tte kotta
 
 【手本（Few-Shot Example）】
@@ -82,6 +84,7 @@ const ROMAJI_CONVERT_PROMPT = `
 初心者が集まって勉強会開いてたんですよ。ボケが。
 普段見向きもしないくせに群がってんじゃねーよ。
 隣の奴が、とりあえずTransformersで、とか言ってるんです。そこでまたブチ切れですよ。
+あのな、Transformersなんてきょうび流行んねーんだよ。ボケが。
 小一時間問い詰めたい。諸刃の剣。素人にはおすすめしない。
 まあお前らド素人は、事前学習済みモデルのパラメーターでも眺めてなさいってこった。
 
@@ -90,6 +93,7 @@ sonna koto yori kiite kure yo ichi yo. kino, Local LLM no kaihatsu Community itt
 shoshinsha ga atsumatte benkyoukai hiraite ta n desu yo. boke ga.
 fudan mimuki mo shinai kuse ni muragatten ja nee yo.
 tonari no yatsu ga, toriaezu Transformers de, to ka itte ru n desu. soko de mata buchikire desu yo.
+ano na, Transformers nante kyoubi hayannee n da yo. boke ga.
 ko ichi jikan toitsumetai. moroha no tsurugi. shirouto ni wa osusume shi nai.
 maa omaera doshirouto wa, Pre-trained Model no Parameter demo nagamete nasai tte kotta.
 
@@ -371,7 +375,9 @@ function sanitizePhoneticRomaji(text: string): string {
     [/\b(?:sujin)\b/gi, "shee roh oo toh"],
     [/\b(?:do\s*sujin|dosujin)\b/gi, "do shee roh oo toh"],
     [/\b(?:shirouto)\b/gi, "shee roh oo toh"],
-    [/\b(?:hayari|hayarin)\b/gi, "ryuukou"],
+    // 流行んねーの誤読（りゅうこうんねー）救済
+    [/\b(?:ryuukou\s*n\s*nee|ryuukou\s*nee|ryuukounnee)\b/gi, "hayannee"],
+    [/\b(?:ryuukou\s*n\s*nai|ryuukounai)\b/gi, "hayaranai"],
     [/\b(?:tte\s+)?kotta\b/gi, "tte kotta"],
     [/\bichi\s*yo\b/gi, "ichi yo"],
 
