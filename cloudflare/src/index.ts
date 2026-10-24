@@ -494,12 +494,13 @@ export default {
           return new Response(JSON.stringify({ error: "Text is required" }), { status: 400, headers: corsHeaders });
         }
 
-        const aiRes = await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
+        // ★省エネ設計：ローマ字変換は超軽量・高速な 8B モデルでニューロン消費を大幅削減★
+        const aiRes = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8", {
           messages: [
             { role: "system", content: ROMAJI_CONVERT_PROMPT.trim() },
             { role: "user", content: `次の日本語をWhisper用ローマ字に変換してください:\n${text}` },
           ],
-          max_tokens: 2048,
+          max_tokens: 1024,
         });
 
         const rawRomaji = aiRes.response.trim();
