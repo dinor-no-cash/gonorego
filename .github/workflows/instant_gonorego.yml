@@ -54,52 +54,35 @@ jobs:
           python -m pip install --upgrade pip
           pip install boto3 requests imageio-ffmpeg
 
-      - name: Synthesize Voice via macOS Whisper
+      - name: Synthesize Voice & Generate True-Synchronized Subtitles
         id: synth
         run: |
           JOB_ID="${{ inputs.job_id }}"
           RATE="${{ inputs.rate }}"
           PBAS="${{ inputs.pitch_baseline }}"
           
-          # 1. Write raw romaji script
-          cat << 'EOF' > raw_script.txt
-          ${{ inputs.script_romaji }}
-          EOF
-
-          # 2. Inject authentic pauses and cadence ([[slnc <ms>]])
-          python prepare_voice_script.py raw_script.txt input_script_tuned.txt
-
-          # 3. Add rate and pitch baseline header
-          echo "[[rate ${RATE}]][[pbas ${PBAS}]][[pmod 0]]" > input_script.txt
-          cat input_script_tuned.txt >> input_script.txt
-
-          echo "=== Generating Voice for Job: ${JOB_ID} ==="
-          cat input_script.txt
-
-          # macOS native Whisper synthesis
-          say -v Whisper -f input_script.txt -o audio.aiff
-          
-          # Convert to 16-bit PCM WAV
-          afconvert -f WAVE -d LEI16 audio.aiff output.wav
-          ls -la output.wav
-
-      - name: Render Video with 38yo Hakka Saizeriya Visual & Flash Subtitles
-        id: video
-        run: |
-          # 1. Prepare Japanese text for subtitles
+          # 1. Write inputs
           cat << 'EOF' > input_japanese.txt
           ${{ inputs.script_japanese }}
           EOF
 
-          # If japanese script is empty, fallback to romaji for subtitles
+          cat << 'EOF' > raw_script.txt
+          ${{ inputs.script_romaji }}
+          EOF
+
+          # If japanese script is empty, fallback to romaji
           if [ ! -s input_japanese.txt ]; then
-            cat input_script_tuned.txt > input_japanese.txt
+            cat raw_script.txt > input_japanese.txt
           fi
 
-          # 2. Generate ASS Subtitles linked to audio timing
-          python generate_subtitles.py input_japanese.txt output.wav subtitles.ass input_script_tuned.txt
+          # 2. Line-by-line Whisper synthesis and exact millisecond subtitle synchronization
+          python synthesize_and_align.py input_japanese.txt raw_script.txt "${RATE}" "${PBAS}" output.wav subtitles.ass
+          ls -la output.wav subtitles.ass
 
-          # 3. Render 2-frame animation video with Hakka Saizeriya visuals & subtitles
+      - name: Render Video with Authentic Orange Gonorego Visuals & Flash Subtitles
+        id: video
+        run: |
+          # Render 2-frame animation video with authentic orange Gonorego visuals & subtitles
           python render_gonorego_video.py output.wav hakka_normal.jpg hakka_sip.jpg subtitles.ass output.mp4
           ls -la output.mp4
 
