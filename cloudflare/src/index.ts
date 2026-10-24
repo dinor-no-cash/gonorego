@@ -49,28 +49,49 @@ const SCRIPT_GEN_PROMPT = `
 
 const ROMAJI_CONVERT_PROMPT = `
 あなたはmacOSの英語音声合成エンジン「say -v Whisper」向けに日本語漫談を変換する高度なバイリンガルAIです。
-Whisperは米語（米国英語）エンジンです。英単語は英語のまま発音させるのが最も流暢で自然です。
-以下の3大原則と【変換の手本】に従い、未知のあらゆる外来語も含めて自律的に変換してください。
+Whisperは米語（米国英語）エンジンです。日本語をそのままローマ字にすると、英語フォニックス（特にサイレントEや長母音）で激しく英語誤読されます。
+特に「a」「i」「e」の母音は間違いの元凶です（例：『みて』を『mite』と書くとダニの『マイト』と読まれてしまう）。
 
-【3大原則】
-1. 【英単語の維持】テキスト内のアルファベット英単語（Transformers, LLM, Docker, Kubernetes, PyTorch, GPU, API等）は絶対にカタカナ化せず、英単語のスペルを100%維持する。
-2. 【カタカナ外来語の英語化（自律推論）】英語由来のカタカナ語（ローカル、コミュニティ、モデル、ハードウェア、クラスター、キュー、アーキテクチャ、ワイン、マーケティング、サイゼリヤ等）は、未知の単語であっても自律的に元の英語スペル（local, community, model, hardware, cluster, queue, architecture, wine, marketing, Saizeriya等）に変換する。
-3. 【日本語のヘボン式ローマ字化】純日本語（漢字・和語）のみを正しい発音でローマ字にする（素人->shirouto, 小一時間->ko ichi jikan, 諸刃の剣->moroha no tsurugi, 流行->ryuukou, ブチ切れ->buchi kee reh, １よ->ichi yo, 昨日->kino, ってこった->tte kotta）。
+以下の3大原則と【母音フォニックス工夫ルール】を厳守して変換してください：
+
+【原則1：英単語はそのまま残す】
+テキスト内のアルファベット英単語（Transformers, LLM, Docker, Kubernetes, PyTorch, GPU, API等）は絶対にカタカナ化せず、英単語のスペルを100%維持する。
+
+【原則2：カタカナ外来語は英語スペルにする】
+英語由来のカタカナ語（ローカル->local, コミュニティ->community, チュートリアル->tutorial, モデル->model, ワイン->wine, マーケティング->marketing等）は、自律的に元の英語スペルに変換する。
+
+【原則3：日本語の『a』『i』『e』の母音フォニックス工夫（超重要！）】
+英語のサイレントE・長母音誤読を物理的に防ぐため、日本語の母音を以下のように工夫してください：
+・「みて」->「mee teh」または「mih teh」（※絶対にmiteと書かない！）
+・「きて」->「kee teh」（※絶対にkiteと書かない！）
+・「して」->「shee teh」（※絶対にshiteやsiteと書かない！）
+・「え段（e）」の語尾は「eh」にしてサイレントEを防止する（te->teh, de->deh, ke->keh, re->reh, me->meh）。
+・「い段（i）」の音は「ee」と表記して確実に日本語の『イ』を発音させる（mi->mee, ki->kee, shi->shee, chi->chee, ni->nee）。
+・「あ段（a）」の単独・語頭は「ah」と表記して確実に『ア』を発音させる（a->ah, ka->kah, ma->mah）。
+・「お前ら」->「oh mah eh rah」
+・「見てらんない」->「mee teh rahn nye」
+・「空けろ」->「ah keh roh」
+・「素人」->「shee roh oo toh」
+・「小一時間問い詰めたい」->「ko ichi jikan toi tsume tai」
+・「諸刃の剣」->「moroha no tsurugi」
+・「ブチ切れ」->「buchi kee reh」
+・「最新流行」->「saishin ryuukou」
+・「ってこった」->「tte kotta」
 
 【変換の手本（Few-Shot Example）】
 入力：
 そんな事より聞いてくれよ１よ。昨日、ローカルLLMの開発コミュニティ行ったんです。
-隣の奴が、とりあえずTransformersとファインチューニングで、とか言ってるんです。そこでまたブチ切れですよ。
-お前は本当にパフォーマンス最適化を理解してるのかと問いたい。問い詰めたい。小一時間問い詰めたい。
-諸刃の剣。素人にはおすすめしない。
+もう見てらんない。使ってみてどうだったか聞いてみたい。
+隣の奴が、とりあえずTransformersで、とか言ってるんです。そこでまたブチ切れですよ。
+小一時間問い詰めたい。諸刃の剣。素人にはおすすめしない。
 まあお前らド素人は、事前学習済みモデルのパラメーターでも眺めてなさいってこった。
 
 出力：
 sonna koto yori kiite kure yo ichi yo. kino, local LLM no kaihatsu community itta n desu.
-tonari no yatsu ga, toriaezu Transformers to fine tuning de, toka itte ru n desu. soko de mata buchi kee reh desu yo.
-omae wa hontou ni performance saitekika o rikai shite ru no ka to toi tai. toi tsume tai. ko ichi jikan toi tsume tai.
-moroha no tsurugi. shirouto ni wa osusume shi nai.
-maa omae ra do shirouto wa, pre-trained model no parameter demo nagamete na sai tte kotta.
+mou mee teh rahn nye. tsukatte mee teh doh dah tah kah kiite mee tai.
+tonari no yatsu ga, toriaezu Transformers de, toka itte ru n desu. soko de mata buchi kee reh desu yo.
+ko ichi jikan toi tsume tai. moroha no tsurugi. shee roh oo toh ni wa osusume shi nai.
+maa oh mah eh rah do shee roh oo toh wa, pre-trained model no parameter demo nah gah meh teh nah sigh tte kotta.
 
 【厳格なフォーマット制約】
 ・入力の行数と出力の行数を完全に一致（1対1）させてください。
@@ -137,49 +158,69 @@ function sanitizePhoneticRomaji(text: string): string {
     }
   }
 
-  // 万が一の日本語残り・誤爆に対する最低限の安全ガード
-  const safetyMap: [RegExp, string][] = [
+  // ★「a」「i」「e」フォニックス誤読（サイレントE・長母音）の機械的撲滅ルール★
+  const phonicsFixes: [RegExp, string][] = [
+    // 冒頭の日本語残り防止
     [/そんな事より聞いてくれよ(?:１|1|一)?よ?/g, "sonna koto yori kiite kure yo ichi yo"],
     [/昨日/g, "kino"],
     [/サイゼリヤ/g, "Saizeriya"],
     [/サイゼ/g, "Saize"],
+
+    // 「みて」が英語の「mite（マイト）」になるのを完全防止
+    [/\bmite\b/gi, "mee teh"],
+    [/\bmita\b/gi, "mee tah"],
+    [/\bmiteran\b/gi, "mee teh rahn"],
+    // 「きて」が英語の「kite（カイト）」になるのを完全防止
+    [/\bkite\b/gi, "kee teh"],
+    [/\bkita\b/gi, "kee tah"],
+    // 「して」が英語の「site/shite」になるのを完全防止
+    [/\bshite\b/gi, "shee teh"],
+    [/\bshita\b/gi, "shee tah"],
+    // 「あけて」が英語の「ake（エイク）」になるのを完全防止
+    [/\bakete\b/gi, "ah keh teh"],
+    [/\bakero\b/gi, "ah keh roh"],
+    // 「まけて」が英語の「make（メイク）」になるのを完全防止
+    [/\bmake\b/gi, "mah keh"],
+    [/\bmakete\b/gi, "mah keh teh"],
+    // 「まで」が英語の「made（メイド）」になるのを完全防止
+    [/\bmade\b/gi, "mah deh"],
+    // 「さけ」が英語の「sake（セイク）」になるのを完全防止
+    [/\bsake\b/gi, "sah keh"],
+    // 「ため」が英語の「tame（テイム）」になるのを完全防止
+    [/\btame\b/gi, "tah meh"],
+    // 「だれ」が英語の「dare（デア）」になるのを完全防止
+    [/\bdare\b/gi, "dah reh"],
+    // 「これ」「それ」「あれ」「おれ」
+    [/\bkore\b/gi, "koh reh"],
+    [/\bsore\b/gi, "soh reh"],
+    [/\bare\b/gi, "ah reh"],
+    [/\bore\b/gi, "oh reh"],
+    // 「お前」「お前ら」
+    [/\bomae\b/gi, "oh mah eh"],
+    [/\bomaera\b/gi, "oh mah eh rah"],
+    [/\bomae-ra\b/gi, "oh mah eh rah"],
+    // 「なさい」「ながめて」
+    [/\bnasai\b/gi, "nah sigh"],
+    [/\bnagamete\b/gi, "nah gah meh teh"],
+
     // 誤爆したToransufaamazuの救済
     [/\b(?:toransufaamazu|toransufaamaa)\b/gi, "Transformers"],
     [/トランスフォーマーズ?/g, "Transformers"],
-    // 頻出キーワードの固定ガード
+
+    // ゴノレゴ象徴フレーズの固定ガード
     [/\b(?:toikurumetai|toitsumetai|toishimetai)\b/gi, "toi tsume tai"],
     [/\b(?:sho\s*ichi\s*jikan|shoichijikan|shouichijikan)\b/gi, "ko ichi jikan"],
     [/\b(?:moro\s*no\s*yaiba|moronoyaiba)\b/gi, "moroha no tsurugi"],
     [/\b(?:buchikire|buchi\s*kire)\b/gi, "buchi kee reh"],
-    [/\b(?:sujin)\b/gi, "shirouto"],
-    [/\b(?:do\s*sujin|dosujin)\b/gi, "do shirouto"],
+    [/\b(?:sujin)\b/gi, "shee roh oo toh"],
+    [/\b(?:do\s*sujin|dosujin)\b/gi, "do shee roh oo toh"],
+    [/\b(?:shirouto)\b/gi, "shee roh oo toh"],
     [/\b(?:hayari|hayarin)\b/gi, "ryuukou"],
     [/\b(?:tte\s+)?kotta\b/gi, "tte kotta"],
     [/\bichi\s*yo\b/gi, "ichi yo"],
-    // 日本語の短音節が英語フォニックスでサイレントE誤読される問題の防止
-    [/\bmade\b/gi, "mah deh"],
-    [/\bmake\b/gi, "mah keh"],
-    [/\bsake\b/gi, "sah keh"],
-    [/\bname\b/gi, "nah meh"],
-    [/\btame\b/gi, "tah meh"],
-    [/\bsame\b/gi, "sah meh"],
-    [/\bkame\b/gi, "kah meh"],
-    [/\byome\b/gi, "yoh meh"],
-    [/\bhime\b/gi, "hee meh"],
-    [/\bdate\b/gi, "dah teh"],
-    [/\blate\b/gi, "rah teh"],
-    [/\bgate\b/gi, "gah teh"],
-    [/\bhate\b/gi, "hah teh"],
-    [/\bmate\b/gi, "mah teh"],
-    [/\bkite\b/gi, "kee teh"],
-    [/\bbite\b/gi, "bee teh"],
-    [/\bsite\b/gi, "shee teh"],
-    [/\bomae\b/gi, "oh mah eh"],
-    [/\bomae-ra\b/gi, "oh mah eh rah"],
-    [/\bakero\b/gi, "ah keh roh"],
   ];
 
-  for (const [pattern, replacement] of safetyMap) {
+  for (const [pattern, replacement] of phonicsFixes) {
     r = r.replace(pattern, replacement);
   }
 

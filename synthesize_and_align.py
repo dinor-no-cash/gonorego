@@ -5,51 +5,70 @@ import wave
 import subprocess
 
 def sanitize_whisper_phonetics(text: str) -> str:
-    """Eliminate English phonics mispronunciations for macOS Whisper voice and guard key Gonorego phrases."""
+    """Eliminate English phonics mispronunciations for macOS Whisper voice, destroying silent-E and ambiguous vowels."""
     if not text:
         return ""
     r = text.strip()
 
     word_map = [
-        # 万が一の日本語残り・誤爆に対する最低限の安全ガード
+        # 冒頭の日本語残り防止
         (r'そんな事より聞いてくれよ(?:１|1|一)?よ?', "sonna koto yori kiite kure yo ichi yo"),
         (r'昨日', "kino"),
         (r'サイゼリヤ', "Saizeriya"),
         (r'サイゼ', "Saize"),
+
+        # 「みて」が英語の「mite（マイト）」になるのを完全防止
+        (r'\bmite\b', "mee teh"),
+        (r'\bmita\b', "mee tah"),
+        (r'\bmiteran\b', "mee teh rahn"),
+        # 「きて」が英語の「kite（カイト）」になるのを完全防止
+        (r'\bkite\b', "kee teh"),
+        (r'\bkita\b', "kee tah"),
+        # 「して」が英語の「site/shite」になるのを完全防止
+        (r'\bshite\b', "shee teh"),
+        (r'\bshita\b', "shee tah"),
+        # 「あけて」が英語の「ake（エイク）」になるのを完全防止
+        (r'\bakete\b', "ah keh teh"),
+        (r'\bakero\b', "ah keh roh"),
+        # 「まけて」が英語の「make（メイク）」になるのを完全防止
+        (r'\bmake\b', "mah keh"),
+        (r'\bmakete\b', "mah keh teh"),
+        # 「まで」が英語の「made（メイド）」になるのを完全防止
+        (r'\bmade\b', "mah deh"),
+        # 「さけ」が英語の「sake（セイク）」になるのを完全防止
+        (r'\bsake\b', "sah keh"),
+        # 「ため」が英語の「tame（テイム）」になるのを完全防止
+        (r'\btame\b', "tah meh"),
+        # 「だれ」が英語の「dare（デア）」になるのを完全防止
+        (r'\bdare\b', "dah reh"),
+        # 「これ」「それ」「あれ」「おれ」
+        (r'\bkore\b', "koh reh"),
+        (r'\bsore\b', "soh reh"),
+        (r'\bare\b', "ah reh"),
+        (r'\bore\b', "oh reh"),
+        # 「お前」「お前ら」
+        (r'\bomae\b', "oh mah eh"),
+        (r'\bomaera\b', "oh mah eh rah"),
+        (r'\bomae-ra\b', "oh mah eh rah"),
+        # 「なさい」「ながめて」
+        (r'\bnasai\b', "nah sigh"),
+        (r'\bnagamete\b', "nah gah meh teh"),
+
         # 誤爆したToransufaamazuの救済
         (r'\b(?:toransufaamazu|toransufaamaa)\b', "Transformers"),
         (r'トランスフォーマーズ?', "Transformers"),
+
         # 頻出キーワードの固定ガード
         (r'\b(?:toikurumetai|toitsumetai|toishimetai)\b', "toi tsume tai"),
         (r'\b(?:sho\s*ichi\s*jikan|shoichijikan|shouichijikan)\b', "ko ichi jikan"),
         (r'\b(?:moro\s*no\s*yaiba|moronoyaiba)\b', "moroha no tsurugi"),
         (r'\b(?:buchikire|buchi\s*kire)\b', "buchi kee reh"),
-        (r'\b(?:sujin)\b', "shirouto"),
-        (r'\b(?:do\s*sujin|dosujin)\b', "do shirouto"),
+        (r'\b(?:sujin)\b', "shee roh oo toh"),
+        (r'\b(?:do\s*sujin|dosujin)\b', "do shee roh oo toh"),
+        (r'\b(?:shirouto)\b', "shee roh oo toh"),
         (r'\b(?:hayari|hayarin)\b', "ryuukou"),
         (r'\b(?:tte\s+)?kotta\b', "tte kotta"),
         (r'\bichi\s*yo\b', "ichi yo"),
-        # 日本語の短音節が英語フォニックスでサイレントE誤読される問題の防止
-        (r'\bmade\b', "mah deh"),
-        (r'\bmake\b', "mah keh"),
-        (r'\bsake\b', "sah keh"),
-        (r'\bname\b', "nah meh"),
-        (r'\btame\b', "tah meh"),
-        (r'\bsame\b', "sah meh"),
-        (r'\bkame\b', "kah meh"),
-        (r'\byome\b', "yoh meh"),
-        (r'\bhime\b', "hee meh"),
-        (r'\bdate\b', "dah teh"),
-        (r'\blate\b', "rah teh"),
-        (r'\bgate\b', "gah teh"),
-        (r'\bhate\b', "hah teh"),
-        (r'\bmate\b', "mah teh"),
-        (r'\bkite\b', "kee teh"),
-        (r'\bbite\b', "bee teh"),
-        (r'\bsite\b', "shee teh"),
-        (r'\bomae\b', "oh mah eh"),
-        (r'\bomae-ra\b', "oh mah eh rah"),
-        (r'\bakero\b', "ah keh roh"),
     ]
 
     for pat, rep in word_map:
