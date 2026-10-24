@@ -70,9 +70,16 @@ def sanitize_whisper_phonetics(text: str) -> str:
         (r'\b(?:tte\s+)?kotta\b', "tte kotta"),
         (r'\bichi\s*yo\b', "ichi yo"),
 
-        # ★重要：「開発」の誤読（けいはつ）防止★
-        (r'\bkeihatsu\b', "kaihatsu"),
-        (r'開発', "kaihatsu"),
+        # ★最重要：「ai」を英語の「エイ」と誤読させない音節分解★
+        # 「開発（kaihatsu）」がrain/waitと同じaiで「ケイハツ」になるのを完全根絶
+        (r'\b(?:kaihatsu|keihatsu)\b', "kah ee hah tsoo"),
+        (r'開発', "kah ee hah tsoo"),
+
+        # 「アイ」母音のエイ誤読防止
+        (r'\biitai\b', "ee tah ee"),
+        (r'\bmitai\b', "mee tah ee"),
+        (r'\btoitai\b', "toh ee tah ee"),
+        (r'\btsumetai\b', "tsoo meh tah ee"),
 
         # ★最重要：助詞の英語略称・フォニックス誤読の機械的撲滅★
         # 「が」がジョージア州GA「ジー・エー」になるのを完全排除
