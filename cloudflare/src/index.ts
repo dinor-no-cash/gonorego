@@ -44,7 +44,7 @@ const SCRIPT_GEN_PROMPT = `
 【超重要・出力制約】
 ・最後の「〜ってこった。」で文章を絶対に終了してください。
 ・「〜ってこった。」の後に、解説、注釈、感想、補足説明、挨拶などは絶対に1文字も出力してはなりません！
-・Markdown引用符（```）や見出し（#）は含めず、セリフ本文のみを出力してください。
+・Markdownコードブロックや見出し（#）は含めず、セリフ本文のみを出力してください。
 `;
 
 const ROMAJI_CONVERT_PROMPT = `
@@ -373,11 +373,6 @@ export default {
         };
         const script_romaji = sanitizePhoneticRomaji(inRomaji);
         const script_japanese = cleanScriptText(inJapanese || "");
-          script_romaji: string;
-          script_japanese?: string;
-          rate?: string;
-          pitch?: string;
-        };
 
         if (!script_romaji) {
           return new Response(JSON.stringify({ error: "Script is required" }), { status: 400, headers: corsHeaders });
