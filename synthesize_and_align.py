@@ -79,32 +79,47 @@ SYLLABLE_MAP = [
 
 def transliterate_syllables(romaji_word: str) -> str:
     w = romaji_word.lower()
-    res = []
+
+    # 語頭の促音（例: tte -> teh, tto -> toh）
+    if re.match(r'^([bcdfghjklmpqrstvwxyz])\1', w):
+        w = w[1:]
+
+    tokens = []
     i = 0
     n = len(w)
+
     while i < n:
+        # 1. 促音検出（子音重複：kk, tt, ss, pp 等 ※nnは撥音）
+        # 直前の音節末尾に閉鎖音子音（Coda）を結合し、独立した孤立アルファベット（吃音・誤読）を防ぐ
         if i + 1 < n and w[i] == w[i+1] and w[i] in 'bcdfghjklmpqrstvwxyz' and w[i] != 'n':
-            res.append(w[i] + ' ')
+            coda_char = w[i]
+            if tokens:
+                tokens[-1] = tokens[-1] + coda_char
             i += 1
             continue
 
+        # 2. 撥音検出（ん: n）
+        # 直前の音節末尾に鼻音n（Coda）を結合（nonde -> nohn deh, kankyou -> kahn kyoh）
         if w[i] == 'n':
             if i + 1 == n or (w[i+1] not in 'aiueoy' and not (i + 2 <= n and w[i+1:i+3] in ['ya','yu','yo'])):
-                res.append('n')
+                if tokens:
+                    tokens[-1] = tokens[-1] + 'n'
+                else:
+                    tokens.append('nn')
                 i += 1
                 continue
 
         matched = False
         for syl, rep in SYLLABLE_MAP:
             if w.startswith(syl, i):
-                res.append(rep)
+                tokens.append(rep)
                 i += len(syl)
                 matched = True
                 break
         if not matched:
-            res.append(w[i])
+            tokens.append(w[i])
             i += 1
-    return ' '.join(res)
+    return ' '.join(tokens)
 
 def apply_phonetic_transliteration(text: str) -> str:
     tokens = re.split(r'([a-zA-Z0-9_\-]+|[^\s\w]+|\s+)', text)
@@ -223,6 +238,22 @@ def sanitize_whisper_phonetics(text: str) -> str:
 
     # ★一元フォニックス音節変換：残ったすべての未変換ローマ字単語を一網打尽に変換★
     r = apply_phonetic_transliteration(r)
+
+    # ★促音便・撥音便・孤立子音の完全撲滅・結合処理★
+    # 1. 孤立した促音子音（t, k, p, s）を直前の母音音節末尾（Coda）に結合（例: ee t tah -> eet tah）
+    r = re.sub(r'\b([a-z]+)\s+([tkps])\s+([a-z]+)', r'\1\2 \3', r, flags=re.IGNORECASE)
+    # 2. 誤爆した孤立hの完全除去（soo h -> soo）
+    r = re.sub(r'\s+h\b', '', r, flags=re.IGNORECASE)
+    # 3. すっこんでろの完全促音・撥音化
+    r = re.sub(r'\b(?:sooh|soo)\s*kohn\b', 'sook kohn', r, flags=re.IGNORECASE)
+    # 4. 単独の撥音「ん」（n）がアルファベット「エヌ」と誤読されるのを完全防止
+    r = re.sub(r'\bn\s+desu\b', 'nn deh soo', r, flags=re.IGNORECASE)
+    r = re.sub(r'\bn\s+da\b', 'nn dah', r, flags=re.IGNORECASE)
+    r = re.sub(r'\bn\s+ka\b', 'nn kah', r, flags=re.IGNORECASE)
+    r = re.sub(r'\bn\b', 'nn', r, flags=re.IGNORECASE)
+    # 5. 語頭・単独の「って」「こった」
+    r = re.sub(r'\btte\b', 'teh', r, flags=re.IGNORECASE)
+    r = re.sub(r'\b(?:teh\s+)?kotta\b', 'teh koht tah', r, flags=re.IGNORECASE)
 
     r = re.sub(r'[ \t]+', ' ', r)
     return r

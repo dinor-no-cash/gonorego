@@ -221,23 +221,38 @@ const SYLLABLE_MAP: [string, string][] = [
 ];
 
 function transliterateSyllables(romajiWord: string): string {
-  const w = romajiWord.toLowerCase();
-  const res: string[] = [];
+  let w = romajiWord.toLowerCase();
+
+  // 語頭の促音（例: tte -> teh, tto -> toh）
+  if (/^([bcdfghjklmpqrstvwxyz])\1/.test(w)) {
+    w = w.substring(1);
+  }
+
+  const tokens: string[] = [];
   let i = 0;
   const n = w.length;
 
   while (i < n) {
-    // 促音（っ: kk, tt, ss, pp 等）
+    // 1. 促音検出（子音重複：kk, tt, ss, pp 等 ※nnは撥音）
+    // 直前の音節末尾に閉鎖音子音（Coda）を結合し、独立した孤立アルファベット（吃音・誤読）を防ぐ
     if (i + 1 < n && w[i] === w[i+1] && 'bcdfghjklmpqrstvwxyz'.includes(w[i]) && w[i] !== 'n') {
-      res.push(w[i] + ' ');
+      const codaChar = w[i];
+      if (tokens.length > 0) {
+        tokens[tokens.length - 1] = tokens[tokens.length - 1] + codaChar;
+      }
       i += 1;
       continue;
     }
 
-    // 撥音（ん: n）
+    // 2. 撥音検出（ん: n）
+    // 直前の音節末尾に鼻音n（Coda）を結合（nonde -> nohn deh, kankyou -> kahn kyoh）
     if (w[i] === 'n') {
       if (i + 1 === n || (!'aiueoy'.includes(w[i+1]) && !(i + 2 <= n && ['ya','yu','yo'].includes(w.substring(i+1, i+3))))) {
-        res.push('n');
+        if (tokens.length > 0) {
+          tokens[tokens.length - 1] = tokens[tokens.length - 1] + 'n';
+        } else {
+          tokens.push('nn');
+        }
         i += 1;
         continue;
       }
@@ -246,18 +261,18 @@ function transliterateSyllables(romajiWord: string): string {
     let matched = false;
     for (const [syl, rep] of SYLLABLE_MAP) {
       if (w.startsWith(syl, i)) {
-        res.push(rep);
+        tokens.push(rep);
         i += syl.length;
         matched = true;
         break;
       }
     }
     if (!matched) {
-      res.push(w[i]);
+      tokens.push(w[i]);
       i += 1;
     }
   }
-  return res.join(' ');
+  return tokens.join(' ');
 }
 
 function applyPhoneticTransliteration(text: string): string {
@@ -400,6 +415,22 @@ function sanitizePhoneticRomaji(text: string): string {
 
   // ★一元フォニックス音節変換：残ったすべての未変換ローマ字単語を一網打尽に変換★
   r = applyPhoneticTransliteration(r);
+
+  // ★促音便・撥音便・孤立子音の完全撲滅・結合処理★
+  // 1. 孤立した促音子音（t, k, p, s）を直前の母音音節末尾（Coda）に結合（例: ee t tah -> eet tah）
+  r = r.replace(/\b([a-z]+)\s+([tkps])\s+([a-z]+)/gi, "$1$2 $3");
+  // 2. 誤爆した孤立hの完全除去（soo h -> soo）
+  r = r.replace(/\s+h\b/gi, "");
+  // 3. すっこんでろの完全促音・撥音化
+  r = r.replace(/\b(?:sooh|soo)\s*kohn\b/gi, "sook kohn");
+  // 4. 単独の撥音「ん」（n）がアルファベット「エヌ」と誤読されるのを完全防止
+  r = r.replace(/\bn\s+desu\b/gi, "nn deh soo");
+  r = r.replace(/\bn\s+da\b/gi, "nn dah");
+  r = r.replace(/\bn\s+ka\b/gi, "nn kah");
+  r = r.replace(/\bn\b/gi, "nn");
+  // 5. 語頭・単独の「って」「こった」
+  r = r.replace(/\btte\b/gi, "teh");
+  r = r.replace(/\b(?:teh\s+)?kotta\b/gi, "teh koht tah");
 
   r = r.replace(/[ \t]+/g, " ");
   return r;
