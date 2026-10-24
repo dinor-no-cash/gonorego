@@ -23,13 +23,13 @@ def build_concat_file(normal_img: str, sip_img: str, total_duration: float, out_
     rng = random.Random(42)
 
     while current_time < total_duration + 5.0:
-        # Hakka talking / ranting (5.0 - 7.5s)
+        # Hakka talking / languid mumbling (5.0 - 7.5s)
         talk_dur = rng.uniform(5.0, 7.5)
         lines.append(f"file '{normal_img_abs}'")
         lines.append(f"duration {talk_dur:.2f}")
         current_time += talk_dur
 
-        # Hakka tilting glass / taking sip (1.4 - 1.8s)
+        # Hakka tilting glass / taking languid sip (1.4 - 1.8s)
         if os.path.exists(sip_img):
             sip_dur = rng.uniform(1.4, 1.8)
             lines.append(f"file '{sip_img_abs}'")
@@ -43,7 +43,7 @@ def build_concat_file(normal_img: str, sip_img: str, total_duration: float, out_
 
     print(f"=== Generated animation sequence -> {out_file} (Duration: {current_time:.1f}s) ===")
 
-def render_video(wav_path: str, normal_img: str, sip_img: str, ass_path: str, out_mp4: str):
+def render_video(wav_path: str, normal_img: str, sip_img: str, out_mp4: str):
     duration = get_audio_duration(wav_path)
     concat_file = "frames.txt"
     build_concat_file(normal_img, sip_img, duration, concat_file)
@@ -51,29 +51,8 @@ def render_video(wav_path: str, normal_img: str, sip_img: str, ass_path: str, ou
     ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
     print(f"Using ffmpeg at: {ffmpeg_bin}")
 
-    # Try with subtitles first
-    if os.path.exists(ass_path):
-        ass_abs = os.path.abspath(ass_path).replace("\\", "/").replace(":", "\\:")
-        cmd = [
-            ffmpeg_bin, "-y",
-            "-f", "concat", "-safe", "0", "-i", concat_file,
-            "-i", wav_path,
-            "-vf", f"subtitles={ass_abs}",
-            "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "192k",
-            "-shortest", out_mp4
-        ]
-        print("Executing ffmpeg with ASS subtitles:")
-        print(" ".join(cmd))
-        res = subprocess.run(cmd)
-        if res.returncode == 0 and os.path.exists(out_mp4) and os.path.getsize(out_mp4) > 1000:
-            print("=== Successfully rendered video with Flash subtitles! ===")
-            return
-
-        print("Subtitles render returned non-zero code. Falling back to video without subtitles filter...")
-
-    # Fallback without subtitles filter if libass is missing
-    cmd_fallback = [
+    # Render clean 2-frame Flash animation with NO subtitles overlay
+    cmd = [
         ffmpeg_bin, "-y",
         "-f", "concat", "-safe", "0", "-i", concat_file,
         "-i", wav_path,
@@ -81,17 +60,17 @@ def render_video(wav_path: str, normal_img: str, sip_img: str, ass_path: str, ou
         "-c:a", "aac", "-b:a", "192k",
         "-shortest", out_mp4
     ]
-    print("Executing fallback ffmpeg without subtitles filter:")
-    res = subprocess.run(cmd_fallback)
+    print("Executing ffmpeg (Pure video + audio, NO subtitles):")
+    res = subprocess.run(cmd)
     if res.returncode != 0:
         raise RuntimeError("ffmpeg video rendering failed!")
-    print("=== Successfully rendered video (fallback)! ===")
+    print("=== Successfully rendered clean Flash video! ===")
 
 if __name__ == "__main__":
     wav = sys.argv[1] if len(sys.argv) > 1 else "output.wav"
     normal = sys.argv[2] if len(sys.argv) > 2 else "hakka_normal.jpg"
     sip = sys.argv[3] if len(sys.argv) > 3 else "hakka_sip.jpg"
-    ass = sys.argv[4] if len(sys.argv) > 4 else "subtitles.ass"
-    out = sys.argv[5] if len(sys.argv) > 5 else "output.mp4"
+    # Even if 5th argument exists, the last argument is out_mp4
+    out = sys.argv[-1] if len(sys.argv) > 4 and sys.argv[-1].endswith(".mp4") else (sys.argv[4] if len(sys.argv) > 4 and sys.argv[4].endswith(".mp4") else "output.mp4")
 
-    render_video(wav, normal, sip, ass, out)
+    render_video(wav, normal, sip, out)

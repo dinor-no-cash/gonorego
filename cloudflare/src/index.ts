@@ -488,7 +488,7 @@ const UI_HTML = `<!DOCTYPE html>
 <body>
   <div class="container">
     <h1>★ インスタント・ゴノレゴ生成器 ★</h1>
-    <div class="banner">【2001年FLASH黄金期】38歳葉花がサイゼリヤで熱弁（時々ワインを傾ける）✕ 巨大キネティック字幕 ✕ macOS Whisper 実機合成</div>
+    <div class="banner">【2001年FLASH黄金期】38歳葉花がサイゼリヤでワインを傾けながらぼやく ✕ 元祖ゴノレゴ脱力Flash ✕ macOS Whisper 実機合成</div>
 
     <!-- STEP 1: AI台本自動生成 -->
     <div class="card">

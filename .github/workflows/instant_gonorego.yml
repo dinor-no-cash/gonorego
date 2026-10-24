@@ -79,11 +79,11 @@ jobs:
           python synthesize_and_align.py input_japanese.txt raw_script.txt "${RATE}" "${PBAS}" output.wav subtitles.ass
           ls -la output.wav subtitles.ass
 
-      - name: Render Video with Authentic Orange Gonorego Visuals & Flash Subtitles
+      - name: Render Video with Authentic Orange Gonorego Visuals
         id: video
         run: |
-          # Render 2-frame animation video with authentic orange Gonorego visuals & subtitles
-          python render_gonorego_video.py output.wav hakka_normal.jpg hakka_sip.jpg subtitles.ass output.mp4
+          # Render 2-frame animation video with authentic orange Gonorego visuals (NO subtitles)
+          python render_gonorego_video.py output.wav hakka_normal.jpg hakka_sip.jpg output.mp4
           ls -la output.mp4
 
       - name: Upload to Cloudflare R2 (If configured)
