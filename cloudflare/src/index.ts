@@ -48,15 +48,34 @@ const SCRIPT_GEN_PROMPT = `
 `;
 
 const ROMAJI_CONVERT_PROMPT = `
-あなたは日本語テキストを、正確なヘボン式ローマ字（日本語の自然な発音）に変換する専門家です。
-macOSの音声合成Whisperで日本語を正しく発音させるため、以下の厳格なルールに従って変換してください。
+あなたはmacOSの音声合成エンジン「say -v Whisper」専用のスクリプトエンジニアです。
+入力された日本語台本を行ごとに1対1で、Whisperが最も自然かつクールに発音できる表記に変換してください。
+
+【最重要ルール（英単語・カタカナ語は英語スペルにする）】
+1. カタカナ語や外来語（ワイン、マーケティング、サイゼリヤ、グラス、フルーツジュース、コスト、リスク、デカンタ、ストリーミング等）は、
+   無理にローマ字化せず【英語本来のスペル】（wine, marketing, Saizeriya, glass, fruit juice, cost, risk, decanter, streaming等）に置き換えてください！Whisperが自然な英語発音で喋ります。
+
+【最重要ルール（日本語の漢字読み・ゴノレゴ構文の厳格指定）】
+2. 以下のキーワードは指定の表記を厳守してください：
+   ・「小一時間」->「ko ichi jikan」（※sho ichi jikanは絶対禁止！）
+   ・「問い詰めたい」->「toi tsume tai」（※問くるめたい等の誤読禁止！）
+   ・「諸刃の剣」->「moroha no tsurugi」（※moro no yaibaは絶対禁止！）
+   ・「ブチ切れ」->「buchi kee reh」
+   ・「素人」->「shirouto」、「ド素人」->「do shirouto」（※sujin等の音読みは絶対禁止！）
+   ・「流行」->「ryuukou」（※この文脈は『りゅうこう』です。hayariは禁止！）
+   ・「１よ」->「ichi yo」
+   ・「通」->「tsuu」
+   ・「昨日」->「kino」
+   ・「ってこった」->「tte kotta」
+   ・「ボケが」->「boke gah」
+   ・「アホかと」->「aho kah toh」
+   ・「馬鹿かと」->「baka kah toh」
 
 【厳格なフォーマット規則】
-1. 【最重要】入力の行数と出力の行数を【完全に一致（1対1対応）】させてください。途中で複数行を1行にまとめたり、空行を作ったりしないでください。
-2. 漢字の読み方は文脈に応じた自然な日本語の訓読み・音読み（例：「素人」->「shirouto」、「通」->「tsu」、「居酒屋」->「izakaya」、「流行」->「hayari」、「昨日」->「kino」）を厳密に適用してください。
-3. 数字の「1」は「ichi」と表記してください。
-4. 各行末にはピリオド（.）をつけてください。
-5. 解説、注釈、感想、Markdownコードブロック等は一切出力せず、変換されたローマ字テキストのみを出力してください。
+3. 入力の行数と出力の行数を【完全に一致（1対1対応）】させてください。空行や複数行結合は禁止です。
+4. すべての日本語（漢字・ひらがな）をローマ字または該当英単語に変換し、漢字やひらがなを一切残さないでください。
+5. 各行末にはピリオド（.）をつけてください。
+6. 解説やMarkdown引用符は含めず、変換後のテキストのみを出力してください。
 `;
 
 // 台本から余計な解説文・末尾テキストを完全に切り落とすサニタイザー
@@ -119,17 +138,55 @@ function sanitizePhoneticRomaji(text: string): string {
     }
   }
 
-  const wordMap: [RegExp, string][] = [
-    // 固有名詞
-    [/\bSaizeriya\b/gi, "Sah ee zeh ree yah"],
-    [/\bSaize\b/gi, "Sah ee zeh"],
-    [/\bYoshinoya\b/gi, "Yoh shee noh yah"],
-    [/\bGonorego\b/gi, "Goh noh reh goh"],
-    [/\bMacinTalk\b/gi, "Mah keen tohk"],
-    [/\bWhisper\b/gi, "Whisper"],
-    [/\bwain\b/gi, "wah een"],
-    [/\bwine\b/gi, "wah een"],
-    // 英語単語とスペル重複によるサイレントE・長母音誤読防止
+  // 決定論的置換テーブル（カタカナ語・英単語、および誤読頻出語の強制正規化）
+  const fixMap: [RegExp, string][] = [
+    // 冒頭の日本語残り防止
+    [/そんな事より聞いてくれよ(?:１|1|一)?よ?/g, "sonna koto yori kiite kureyo ichi yo"],
+    [/昨日/g, "kino"],
+    [/サイゼリヤ/g, "Saizeriya"],
+    [/サイゼ/g, "Saize"],
+    // 1. 英単語・カタカナ語は該当する英単語スペルへ統一
+    [/\b(?:wain|wah\s*een)\b/gi, "wine"],
+    [/\b(?:maketingu)\b/gi, "marketing"],
+    [/\b(?:gurasu)\b/gi, "glass"],
+    [/\b(?:dekanta)\b/gi, "decanter"],
+    [/\b(?:kosuto)\b/gi, "cost"],
+    [/\b(?:risuku)\b/gi, "risk"],
+    [/\b(?:furu-tsu\s*ju-su|furuutsu\s*juusu)\b/gi, "fruit juice"],
+    [/\b(?:kaberune\s*so-viniyon|kabuerune\s*souviniyon)\b/gi, "Cabernet Sauvignon"],
+    [/\b(?:biodinamikku)\b/gi, "biodynamic"],
+    // 2. 「問い詰めたい」の誤読排除（問くるめたい等を完全防止）
+    [/\b(?:toikurumetai|toitsumetai|toishimetai|toi\s*tsume\s*tai)\b/gi, "toi tsume tai"],
+    [/問(?:い)?(?:詰|くる)めたい/g, "toi tsume tai"],
+    // 3. 「小一時間」の誤読排除（sho ichi jikan等を完全防止）
+    [/\b(?:sho\s*ichi\s*jikan|shoichijikan|shouichijikan|ko\s*ichi\s*jikan|koichijikan)\b/gi, "ko ichi jikan"],
+    [/小一時間/g, "ko ichi jikan"],
+    // 4. 「諸刃の剣」の誤読排除（moro no yaiba等を完全防止）
+    [/\b(?:moro\s*no\s*yaiba|moronoyaiba|moroha\s*no\s*tsurugi|morohanotsurugi)\b/gi, "moroha no tsurugi"],
+    [/諸刃の(?:剣|刃)/g, "moroha no tsurugi"],
+    // 5. 「ブチ切れ」の正確な発音保証
+    [/\b(?:buchikire|buchi\s*kire|buchikeereh|buchi\s*kee\s*reh)\b/gi, "buchi kee reh"],
+    [/(?:ブチ|ぶち)(?:切|き)れ/g, "buchi kee reh"],
+    // 6. 「素人」「ド素人」の誤読排除（sujin等の音読みを完全撲滅）
+    [/\b(?:do\s*sujin|doshirouto|do\s*shirouto|doh\s*shee\s*roh\s*oo\s*toh)\b/gi, "do shirouto"],
+    [/\b(?:sujin|shirouto|shee\s*roh\s*oo\s*toh)\b/gi, "shirouto"],
+    [/ド素人/g, "do shirouto"],
+    [/素人/g, "shirouto"],
+    // 7. 「流行」はこの文脈では「りゅうこう」
+    [/\b(?:hayari|hayarin|ryuukou|ryoukou)\b/gi, "ryuukou"],
+    [/最新流行/g, "saishin ryuukou"],
+    [/流行/g, "ryuukou"],
+    // 8. 「通」
+    [/\b(?:tsu)\b/gi, "tsuu"],
+    [/ワイン通/g, "wine tsuu"],
+    [/通/g, "tsuu"],
+    // 定番キーワード
+    [/\bichi\s*yo\b/gi, "ichi yo"],
+    [/\b(?:tte\s+)?kotta\b/gi, "tte kotta"],
+    [/\bboke\s*ga\b/gi, "boke gah"],
+    [/\baho\s*ka\s*to\b/gi, "aho kah toh"],
+    [/\bbaka\s*ka\s*to\b/gi, "baka kah toh"],
+    // 日本語ローマ字が英語フォニックスでサイレントE誤読される問題の防止
     [/\bmade\b/gi, "mah deh"],
     [/\bmake\b/gi, "mah keh"],
     [/\bsake\b/gi, "sah keh"],
@@ -147,38 +204,17 @@ function sanitizePhoneticRomaji(text: string): string {
     [/\bkite\b/gi, "kee teh"],
     [/\bbite\b/gi, "bee teh"],
     [/\bsite\b/gi, "shee teh"],
-    [/\bline\b/gi, "ree neh"],
-    [/\bfine\b/gi, "foo ee neh"],
-    [/\bmine\b/gi, "mee neh"],
-    [/\bnine\b/gi, "nee neh"],
-    [/\bpine\b/gi, "pah ee neh"],
     [/\bhome\b/gi, "hoh meh"],
     [/\bcome\b/gi, "koh meh"],
     [/\bsome\b/gi, "soh meh"],
     [/\btome\b/gi, "toh meh"],
     [/\brose\b/gi, "roh seh"],
     [/\bnose\b/gi, "noh seh"],
-    [/\bhose\b/gi, "hoh seh"],
-    [/\bdose\b/gi, "doh seh"],
     [/\bcure\b/gi, "koo reh"],
     [/\bpure\b/gi, "poo reh"],
     [/\bsure\b/gi, "soo reh"],
     [/\brude\b/gi, "roo deh"],
     [/\btube\b/gi, "tsoo beh"],
-    [/\bfuse\b/gi, "foo seh"],
-    [/\bmuse\b/gi, "moo seh"],
-    [/\buse\b/gi, "oo seh"],
-    [/\bgive\b/gi, "gee veh"],
-    [/\blive\b/gi, "ree veh"],
-    [/\bhave\b/gi, "hah veh"],
-    [/\bone\b/gi, "oh neh"],
-    [/\bdone\b/gi, "doh neh"],
-    [/\bgone\b/gi, "goh neh"],
-    [/\bnone\b/gi, "noh neh"],
-    [/\bhere\b/gi, "heh reh"],
-    [/\bwere\b/gi, "weh reh"],
-    [/\bthere\b/gi, "teh reh"],
-    [/\bwhere\b/gi, "weh reh"],
     [/\bmore\b/gi, "moh reh"],
     [/\bsore\b/gi, "soh reh"],
     [/\bkore\b/gi, "koh reh"],
@@ -189,56 +225,9 @@ function sanitizePhoneticRomaji(text: string): string {
     [/\bsono\b/gi, "soh noh"],
     [/\bsoko\b/gi, "soh koh"],
     [/\bakero\b/gi, "ah keh roh"],
-    [/\bmoro\b/gi, "moh roh"],
-    [/\bshirouto\b/gi, "shee roh oo toh"],
-    [/\bdoshirouto\b/gi, "doh shee roh oo toh"],
-    // 助詞および短い単音節
-    [/\bha\b/gi, "wah"],
-    [/\bwa\b/gi, "wah"],
-    [/\bga\b/gi, "gah"],
-    [/\bde\b/gi, "deh"],
-    [/\bda\b/gi, "dah"],
-    [/\bto\b/gi, "toh"],
-    [/\bno\b/gi, "noh"],
-    [/\bso\b/gi, "soh"],
-    [/\bdo\b/gi, "doh"],
-    [/\bgo\b/gi, "goh"],
-    [/\bhe\b/gi, "eh"],
-    [/\bme\b/gi, "meh"],
-    [/\bhi\b/gi, "hee"],
-    [/\bby\b/gi, "bah ee"],
-    [/\bin\b/gi, "een"],
-    [/\bon\b/gi, "ohn"],
-    [/\bat\b/gi, "aht"],
-    [/\bup\b/gi, "oo poo"],
-    [/\bus\b/gi, "oo soo"],
-    [/\bam\b/gi, "ahm"],
-    [/\ban\b/gi, "ahn"],
-    [/\bas\b/gi, "ahs"],
-    [/\bit\b/gi, "eet"],
-    [/\bis\b/gi, "ee soo"],
-    // 定番単語
-    [/\bboke\b/gi, "boh keh"],
-    [/\baho\b/gi, "ah hoh"],
-    [/\bbaka\b/gi, "bah kah"],
-    [/\bichi\b/gi, "ee chee"],
-    [/\bkino\b/gi, "kee noh"],
-    [/\bkujo\b/gi, "kee noh"],
-    [/\btsu\b/gi, "tsoo oo"],
-    [/\bkotta\b/gi, "koht tah"],
-    [/\btokumori\b/gi, "toh koo moh ree"],
-    [/\btsuyudaku\b/gi, "tsoo yoo dah koo"],
-    [/\byo-shi\b/gi, "yoh shee"],
-    [/\bpapa\b/gi, "pah pah"],
-    [/\bkoichijikan\b/gi, "koh ee chee jee kahn"],
-    [/\btoitsumetai\b/gi, "toh ee tsoo meh tie"],
-    [/\bdecanter\b/gi, "deh kahn tah"],
-    [/\bdekanta\b/gi, "deh kahn tah"],
-    [/\bglass\b/gi, "goo rah soo"],
-    [/\bgurasu\b/gi, "goo rah soo"],
   ];
 
-  for (const [pattern, replacement] of wordMap) {
+  for (const [pattern, replacement] of fixMap) {
     r = r.replace(pattern, replacement);
   }
 
