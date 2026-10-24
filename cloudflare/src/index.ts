@@ -48,65 +48,54 @@ const SCRIPT_GEN_PROMPT = `
 `;
 
 const ROMAJI_CONVERT_PROMPT = `
-あなたはmacOSの英語音声合成エンジン「say -v Whisper」向けに日本語漫談を変換する高度なバイリンガルAIです。
-Whisperは米語（米国英語）エンジンです。日本語をそのままローマ字にすると、英語フォニックス（特にサイレントEや長母音）で激しく英語誤読されます。
-特に「a」「i」「e」の母音は間違いの元凶です（例：『みて』を『mite』と書くとダニの『マイト』と読まれてしまう）。
+あなたは日本語のテキストを正確な標準ヘボン式ローマ字に変換する専門家です。
+与えられた日本語のセリフを、文脈に合った正確な読み方のローマ字に変換してください。
 
-以下の3大原則と【母音フォニックス工夫ルール】を厳守して変換してください：
+【厳格な3大ルール】
+1. 【カタカナ外来語は先頭大文字（Title Case）の英単語にする】
+   英語由来のカタカナ語（ローカル->Local, コミュニティ->Community, ワイン->Wine, チュートリアル->Tutorial, モデル->Model, フレームワーク->Framework等）は、元の英単語に直し、必ず先頭を大文字（Title Case）にしてください。
+2. 【もともと英単語のものはそのまま維持】
+   テキスト内の英単語（Transformers, LLM, Docker, PyTorch, GPU, API等）はスペルを100%維持してください。
+3. 【日本語の読みはすべて小文字の標準ヘボン式ローマ字にする】
+   漢字は前後の文脈に合わせて正確に読解し、自然な小文字のヘボン式ローマ字に変換してください。
+   ・初心者 -> shoshinsha
+   ・集まって -> atsumatte
+   ・勉強会 -> benkyoukai
+   ・開いて -> hiraite （※「あいて」ではなく「ひらいて」と文脈を読んで正確に読む）
+   ・普段 -> fudan （※「ふつう」ではなく「ふだん」と正確に読む）
+   ・見向きもしない -> mimuki mo shinai
+   ・開発 -> kaihatsu
+   ・大規模 -> daikibo
+   ・にわか -> niwaka
+   ・見てらんない -> mite ran nai
+   ・使ってみて -> tsukatte mite
+   ・素人 -> shirouto
+   ・諸刃の剣 -> moroha no tsurugi
+   ・小一時間問い詰めたい -> ko ichi jikan toitsumetai
+   ・ブチ切れ -> buchikire
+   ・最新流行 -> saishin ryuukou
+   ・眺めてなさいってこった -> nagamete nasai tte kotta
 
-【原則1：英単語はそのまま残す】
-テキスト内のアルファベット英単語（Transformers, LLM, Docker, Kubernetes, PyTorch, GPU, API等）は絶対にカタカナ化せず、英単語のスペルを100%維持する。
-
-【原則2：カタカナ外来語は【必ず先頭大文字】の英語スペルにする（最重要！）】
-英語由来のカタカナ語（ローカル->Local, コミュニティ->Community, チュートリアル->Tutorial, モデル->Model, ワイン->Wine, マーケティング->Marketing, フレームワーク->Framework等）は、自律的に元の英語スペルに変換し、【必ず先頭を大文字（Title Case）】にしてください。
-※先頭を大文字にすることで、システムが辞書なしで100%確実に英単語として認識・保護します！
-※逆に日本語のローマ字は【必ずすべて小文字】で出力してください（例：kino, daikibo, kaihatsu, niwaka）。
-
-【原則3：日本語の『a』『i』『e』の母音フォニックス工夫（超重要！）】
-英語のサイレントE・長母音誤読を物理的に防ぐため、日本語の母音を以下のように工夫してください：
-・「みて」->「mee teh」または「mih teh」（※絶対にmiteと書かない！）
-・「きて」->「kee teh」（※絶対にkiteと書かない！）
-・「して」->「shee teh」（※絶対にshiteやsiteと書かない！）
-・「え段（e）」の語尾は「eh」にしてサイレントEを防止する（te->teh, de->deh, ke->keh, re->reh, me->meh）。
-・「い段（i）」の音は「ee」と表記して確実に日本語の『イ』を発音させる（mi->mee, ki->kee, shi->shee, chi->chee, ni->nee）。
-・「あ段（a）」の単独・語頭は「ah」と表記して確実に『ア』を発音させる（a->ah, ka->kah, ma->mah）。
-・「お前ら」->「oh mah eh rah」
-・「見てらんない」->「mee teh rahn nye」
-・「空けろ」->「ah keh roh」
-・「素人」->「shee roh oo toh」
-・「小一時間問い詰めたい」->「ko ichi jikan toi tsume tai」
-・「諸刃の剣」->「moroha no tsurugi」
-・「ブチ切れ」->「buchi kee reh」
-・「最新流行」->「saishin ryuukou」
-・「大規模」->「dah ee kee boh」（※英語では『dai』はdaily/aidのように必ず『デイ』と読まれるため、daikiboと書くと100%『でえきぼ』になります！必ず『dah ee kee boh』と書くこと！）
-・「にわか」->「nee wah kah」（※英語では『ni』はnice/nightのように『ナイ』と読まれるため、niwakaと書くと100%『ないわか』になります！必ず『nee wah kah』と書くこと！）
-・「開発」->「kah ee hah tsoo」（※英語では『ai』はrain/waitのように必ず『エイ』と読まれるため、kaihatsuと書くと100%『ケイハツ』になります！必ず『kah ee hah tsoo』と書くこと！）
-・「アイ（ai）」の音はすべて「ah ee」に音節分解して確実に『アイ』を発音させる（例：大規模->dah ee kee boh, 開発->kah ee hah tsoo, サイゼリヤ->Sah ee zeh ree yah, 〜たい->tah ee, 〜ない->nah ee）
-・助詞「が」->「gah」（※gaと書くとジョージア州GA「ジー・エー」と誤読されます！必ずgahと書くこと！）
-・助詞「は」->「wah」
-・助詞「で」->「deh」
-・助詞「と」->「toh」
-・助詞「の」->「noh」
-・「ってこった」->「tte kotta」
-
-【変換の手本（Few-Shot Example）】
+【手本（Few-Shot Example）】
 入力：
 そんな事より聞いてくれよ１よ。昨日、ローカルLLMの開発コミュニティ行ったんです。
-もう見てらんない。使ってみてどうだったか聞いてみたい。
+初心者が集まって勉強会開いてたんですよ。ボケが。
+普段見向きもしないくせに群がってんじゃねーよ。
 隣の奴が、とりあえずTransformersで、とか言ってるんです。そこでまたブチ切れですよ。
 小一時間問い詰めたい。諸刃の剣。素人にはおすすめしない。
 まあお前らド素人は、事前学習済みモデルのパラメーターでも眺めてなさいってこった。
 
 出力：
-sonna koto yori kiite kure yo ichi yo. kino, Local LLM noh kah ee hah tsoo Community itta n desu.
-mou mee teh rahn nye. tsukatte mee teh doh dah tah kah kiite mee tai.
-tonari no yatsu gah, toriaezu Transformers deh, toh ka itte ru n desu. soh koh deh mata buchi kee reh desu yo.
-ko ichi jikan toi tsume tai. moroha no tsurugi. shee roh oo toh ni wa osusume shi nai.
-maa oh mah eh rah do shee roh oo toh wa, Pre-trained Model no Parameter demo nah gah meh teh nah sah ee tte kotta.
+sonna koto yori kiite kure yo ichi yo. kino, Local LLM no kaihatsu Community itta n desu.
+shoshinsha ga atsumatte benkyoukai hiraite ta n desu yo. boke ga.
+fudan mimuki mo shinai kuse ni muragatten ja nee yo.
+tonari no yatsu ga, toriaezu Transformers de, to ka itte ru n desu. soko de mata buchikire desu yo.
+ko ichi jikan toitsumetai. moroha no tsurugi. shirouto ni wa osusume shi nai.
+maa omaera doshirouto wa, Pre-trained Model no Parameter demo nagamete nasai tte kotta.
 
 【厳格なフォーマット制約】
 ・入力の行数と出力の行数を完全に一致（1対1）させてください。
-・解説、挨拶、Markdownコードブロック等は一切含めず、変換後のテキストのみを出力してください。
+・解説、挨拶、Markdownコードブロック等は一切含めず、変換後のローマ字テキストのみを出力してください。
 `;
 
 // 台本から余計な解説文・末尾テキストを完全に切り落とすサニタイザー
