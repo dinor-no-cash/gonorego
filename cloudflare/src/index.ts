@@ -41,41 +41,22 @@ const SCRIPT_GEN_PROMPT = `
 しかしこれをやると[重大なリスクやデメリット]という危険も伴う、諸刃の剣。素人にはおすすめしない。
 まあお前らド素人は、[初心者向けの無難な代替案]でも眺めてなさいってこった。
 
-【超重要・出力制約】
+【超重要ルール（厳格遵守）】
 ・最後の「〜ってこった。」で文章を絶対に終了してください。
-・「〜ってこった。」の後に、解説、注釈、感想、補足説明、挨拶などは絶対に1文字も出力してはなりません！
-・Markdownコードブロックや見出し（#）は含めず、セリフ本文のみを出力してください。
+・「〜ってこった。」の直後にセリフは終了です。その後に解説、注釈、感想、補足説明、挨拶、Markdownコードブロック、アスタリスク等は絶対に1文字も出力してはなりません！
+・セリフ本文のみを出力してください。
 `;
 
 const ROMAJI_CONVERT_PROMPT = `
-あなたはmacOSの音声合成エンジン「say -v Whisper」用のローマ字変換エンジニアです。
-入力された日本語テキストの【意味やセリフの流れを一切変えず】、Whisperが滑らかかつ日本語らしく発音できるローマ字表記に変換してください。
+あなたは日本語テキストを、正確なヘボン式ローマ字（日本語の自然な発音）に変換する専門家です。
+macOSの音声合成Whisperで日本語を正しく発音させるため、以下の厳格なルールに従って変換してください。
 
-【最重要・英語誤読排除ルール（Whisperは英語音素エンジンです）】
-英語単語とスペルが一致すると、英語の発音規則（サイレントEや長母音）で激しく誤読されます。必ず以下の音素表記に従ってください：
-1. 「サイゼリヤ」「サイゼ」->「Sah ee zeh ree yah」「Sah ee zeh」
-2. 「まで」->「mah deh」（英語madeのメード誤読を排除）
-3. 「が」->「gah」（ジョージア州GAのジー・エー誤読を排除）
-4. 「それ」「これ」「あれ」「俺」->「soh reh」「koh reh」「ah reh」「oh reh」
-5. 「お前」「お前ら」->「oh mah eh」「oh mah eh rah」
-6. 「酒」「ワイン」->「sah keh」「wah een」（sake/wineの英語誤読防止）
-7. 「範囲」->「hah nee」（honey誤読防止）
-8. 「人」->「hee toh」（hi誤読防止）
-9. 「その」「そこ」->「soh noh」「soh koh」
-10. 「そん」->「sohn」（son誤読防止）
-11. 「でも」->「deh moh」（demo誤読防止）
-12. 「とか」->「toh kah」（to誤読防止）
-13. 「ボケ」「アホ」「馬鹿」->「boh keh」「ah hoh」「bah kah」
-14. 「小一時間」->「koh ee chee jee kahn」
-15. 「問い詰めたい」->「toh ee tsoo meh tie」
-16. 「ない」「たい」->「nye」「tie」
-17. 「〜るん」->「roon」（run誤読防止）
-18. 助詞: 「は」->「wah」, 「で」->「deh」, 「の」->「noh」, 「と」->「toh」, 「だ」->「dah」
-19. 促音（っ）: 「naht tah」や「eet teh」「koht tah」のように二重子音で息止めを表現。
-20. 息継ぎとポーズのために、文末にはピリオド（.）、文中の区切りにはカンマ（,）を必ず入れてください。
-21. 最後の「〜ってこった。」（〜deh moh nah gah meh teh nah sigh tteh koht tah.）まで変換し、余計な解説は一切含めないこと。
-
-解説やMarkdown引用符は含めず、変換後のローマ字テキストのみを出力してください。
+【厳格なフォーマット規則】
+1. 【最重要】入力の行数と出力の行数を【完全に一致（1対1対応）】させてください。途中で複数行を1行にまとめたり、空行を作ったりしないでください。
+2. 漢字の読み方は文脈に応じた自然な日本語の訓読み・音読み（例：「素人」->「shirouto」、「通」->「tsu」、「居酒屋」->「izakaya」、「流行」->「hayari」、「昨日」->「kino」）を厳密に適用してください。
+3. 数字の「1」は「ichi」と表記してください。
+4. 各行末にはピリオド（.）をつけてください。
+5. 解説、注釈、感想、Markdownコードブロック等は一切出力せず、変換されたローマ字テキストのみを出力してください。
 `;
 
 // 台本から余計な解説文・末尾テキストを完全に切り落とすサニタイザー
@@ -89,16 +70,27 @@ function cleanScriptText(raw: string): string {
   // 導入文除去
   s = s.replace(/^(?:了解(?:いた)?しました|以下(?:は|が)?(?:台本|セリフ).*?です[：:\n]*)/i, "").trim();
 
-  // 最重要：終了アンカー「〜ってこった。」で以降をバッサリ切断
-  const endMatch = s.match(/([\s\S]*?(?:ってこった|てこった)[。！？!?\s]*)/);
-  if (endMatch && endMatch[1]) {
-    s = endMatch[1].trim();
-  } else {
-    // アンカーがない場合の保険切断
-    const cutoffMatch = s.match(/([\s\S]*?)(?:\n\s*(?:【(?:解説|注意|注釈|補足|ポイント)】|解説[:：]|注[:：]|Note:|###|\*\*\*|---))/i);
-    if (cutoffMatch && cutoffMatch[1]) {
-      s = cutoffMatch[1].trim();
+  // 最重要：終了アンカー（文末オチ句）で以降をバッサリ切断
+  // 「〜ってこった」「〜ってことだ」「〜って事だ」「〜ってわけだ」「〜てなもんだ」などの最後の出現位置を探す
+  const anchors = [
+    /(?:ってこった|てこった|ってことだ|って事だ|ってわけだ|てなもんだ)[。！？!?\s]*/g,
+    /(?:眺めてなさい|見てなさい|食ってなさい|すっこんでろ)[。！？!?\s]*/g
+  ];
+
+  for (const pat of anchors) {
+    const matches = Array.from(s.matchAll(pat));
+    if (matches.length > 0) {
+      const lastMatch = matches[matches.length - 1];
+      const endPos = (lastMatch.index ?? 0) + lastMatch[0].length;
+      s = s.substring(0, endPos).trim();
+      break;
     }
+  }
+
+  // 保険：解説や注釈の除去
+  const cutoffMatch = s.match(/([\s\S]*?)(?:\n\s*(?:【(?:解説|注意|注釈|補足|ポイント)】|解説[:：]|注[:：]|※|Note:|Explanation:|###|\*\*\*|---))/i);
+  if (cutoffMatch && cutoffMatch[1]) {
+    s = cutoffMatch[1].trim();
   }
 
   return s;
@@ -112,14 +104,18 @@ function sanitizePhoneticRomaji(text: string): string {
   // コードブロック除去
   r = r.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/, "");
 
-  // 終了アンカー以降の切り落とし
-  const endMatch = r.match(/([\s\S]*?(?:teh\s+koht\s+tah|tteh\s+kotta|teh\s+kohht|kotta)[.!?\s]*)/i);
-  if (endMatch && endMatch[1]) {
-    r = endMatch[1].trim();
-  } else {
-    const cutoffMatch = r.match(/([\s\S]*?)(?:\n\s*(?:Note:|Explanation:|###|\*\*\*|---))/i);
-    if (cutoffMatch && cutoffMatch[1]) {
-      r = cutoffMatch[1].trim();
+  // 終了アンカー以降の切り落とし（最後のオチ句以降を完全切断）
+  const anchors = [
+    /(?:tteh\s+koht\s+tah|teh\s+koht\s+tah|tteh\s+kotta|teh\s+kotta|tte\s+kotta|te\s+kotta|koht\s+tah|kotta)[.!?\s]*/gi,
+    /(?:nah\s+gah\s+meh\s+teh\s+nah\s+sigh|nagamete\s+nasai)[.!?\s]*/gi
+  ];
+  for (const pat of anchors) {
+    const matches = Array.from(r.matchAll(pat));
+    if (matches.length > 0) {
+      const lastMatch = matches[matches.length - 1];
+      const endPos = (lastMatch.index ?? 0) + lastMatch[0].length;
+      r = r.substring(0, endPos).trim();
+      break;
     }
   }
 
@@ -131,7 +127,9 @@ function sanitizePhoneticRomaji(text: string): string {
     [/\bGonorego\b/gi, "Goh noh reh goh"],
     [/\bMacinTalk\b/gi, "Mah keen tohk"],
     [/\bWhisper\b/gi, "Whisper"],
-    // 英語単語と完全一致して誤読される要注意単語
+    [/\bwain\b/gi, "wah een"],
+    [/\bwine\b/gi, "wah een"],
+    // 英語単語とスペル重複によるサイレントE・長母音誤読防止
     [/\bmade\b/gi, "mah deh"],
     [/\bmake\b/gi, "mah keh"],
     [/\bsake\b/gi, "sah keh"],
@@ -186,6 +184,14 @@ function sanitizePhoneticRomaji(text: string): string {
     [/\bkore\b/gi, "koh reh"],
     [/\bare\b/gi, "ah reh"],
     [/\bore\b/gi, "oh reh"],
+    [/\bomae\b/gi, "oh mah eh"],
+    [/\bomae-ra\b/gi, "oh mah eh rah"],
+    [/\bsono\b/gi, "soh noh"],
+    [/\bsoko\b/gi, "soh koh"],
+    [/\bakero\b/gi, "ah keh roh"],
+    [/\bmoro\b/gi, "moh roh"],
+    [/\bshirouto\b/gi, "shee roh oo toh"],
+    [/\bdoshirouto\b/gi, "doh shee roh oo toh"],
     // 助詞および短い単音節
     [/\bha\b/gi, "wah"],
     [/\bwa\b/gi, "wah"],
@@ -215,14 +221,17 @@ function sanitizePhoneticRomaji(text: string): string {
     [/\bboke\b/gi, "boh keh"],
     [/\baho\b/gi, "ah hoh"],
     [/\bbaka\b/gi, "bah kah"],
+    [/\bichi\b/gi, "ee chee"],
+    [/\bkino\b/gi, "kee noh"],
+    [/\bkujo\b/gi, "kee noh"],
+    [/\btsu\b/gi, "tsoo oo"],
+    [/\bkotta\b/gi, "koht tah"],
     [/\btokumori\b/gi, "toh koo moh ree"],
     [/\btsuyudaku\b/gi, "tsoo yoo dah koo"],
     [/\byo-shi\b/gi, "yoh shee"],
     [/\bpapa\b/gi, "pah pah"],
     [/\bkoichijikan\b/gi, "koh ee chee jee kahn"],
     [/\btoitsumetai\b/gi, "toh ee tsoo meh tie"],
-    [/\bwain\b/gi, "wah een"],
-    [/\bwine\b/gi, "wah een"],
     [/\bdecanter\b/gi, "deh kahn tah"],
     [/\bdekanta\b/gi, "deh kahn tah"],
     [/\bglass\b/gi, "goo rah soo"],
@@ -236,7 +245,6 @@ function sanitizePhoneticRomaji(text: string): string {
   r = r.replace(/[ \t]+/g, " ");
   return r;
 }
-
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -266,7 +274,7 @@ export default {
           return new Response(JSON.stringify({ error: "Theme is required" }), { status: 400, headers: corsHeaders });
         }
 
-        const aiRes = await env.AI.run("@cf/qwen/qwen2.5-coder-32b-instruct", {
+        const aiRes = await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
           messages: [
             { role: "system", content: SCRIPT_GEN_PROMPT.trim() },
             { role: "user", content: `テーマ: ${theme}` },
@@ -290,7 +298,7 @@ export default {
           return new Response(JSON.stringify({ error: "Text is required" }), { status: 400, headers: corsHeaders });
         }
 
-        const aiRes = await env.AI.run("@cf/qwen/qwen2.5-coder-32b-instruct", {
+        const aiRes = await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
           messages: [
             { role: "system", content: ROMAJI_CONVERT_PROMPT.trim() },
             { role: "user", content: `次の日本語をWhisper用ローマ字に変換してください:\n${text}` },
