@@ -234,24 +234,32 @@ function transliterateSyllables(romajiWord: string): string {
 
   while (i < n) {
     // 1. 促音検出（子音重複：kk, tt, ss, pp 等 ※nnは撥音）
-    // 直前の音節末尾に閉鎖音子音（Coda）を結合し、独立した孤立アルファベット（吃音・誤読）を防ぐ
+    // ★重要：英語に実在しない「ht」などの異常子音結合を防ぐため、直前音節末尾の長母音hを除去して純粋な短母音閉音節（CVC: kot, sook, eet）にする★
     if (i + 1 < n && w[i] === w[i+1] && 'bcdfghjklmpqrstvwxyz'.includes(w[i]) && w[i] !== 'n') {
       const codaChar = w[i];
       if (tokens.length > 0) {
-        tokens[tokens.length - 1] = tokens[tokens.length - 1] + codaChar;
+        let prev = tokens[tokens.length - 1];
+        if (prev.endsWith('h')) {
+          prev = prev.substring(0, prev.length - 1);
+        }
+        tokens[tokens.length - 1] = prev + codaChar;
       }
       i += 1;
       continue;
     }
 
     // 2. 撥音検出（ん: n）
-    // 直前の音節末尾に鼻音n（Coda）を結合（nonde -> nohn deh, kankyou -> kahn kyoh）
+    // 直前音節の末尾'h'を除去して鼻音nを結合（例: non, kan, hon）
     if (w[i] === 'n') {
       if (i + 1 === n || (!'aiueoy'.includes(w[i+1]) && !(i + 2 <= n && ['ya','yu','yo'].includes(w.substring(i+1, i+3))))) {
         if (tokens.length > 0) {
-          tokens[tokens.length - 1] = tokens[tokens.length - 1] + 'n';
+          let prev = tokens[tokens.length - 1];
+          if (prev.endsWith('h')) {
+            prev = prev.substring(0, prev.length - 1);
+          }
+          tokens[tokens.length - 1] = prev + 'n';
         } else {
-          tokens.push('nn');
+          tokens.push('un'); // 英語に実在しない語頭nnではなく実在の感嘆詞un
         }
         i += 1;
         continue;
@@ -416,21 +424,24 @@ function sanitizePhoneticRomaji(text: string): string {
   // ★一元フォニックス音節変換：残ったすべての未変換ローマ字単語を一網打尽に変換★
   r = applyPhoneticTransliteration(r);
 
-  // ★促音便・撥音便・孤立子音の完全撲滅・結合処理★
-  // 1. 孤立した促音子音（t, k, p, s）を直前の母音音節末尾（Coda）に結合（例: ee t tah -> eet tah）
-  r = r.replace(/\b([a-z]+)\s+([tkps])\s+([a-z]+)/gi, "$1$2 $3");
-  // 2. 誤爆した孤立hの完全除去（soo h -> soo）
+  // ★英語実在音節（Phonotactics）準拠：架空子音クラスタ（ht, 語頭nn等）の完全根絶★
+  // 1. 促音（っ）の英語実在音節化（kot ta, it ta, suk kon de ro, te kot ta）
+  r = r.replace(/\bkoht\b/gi, "kot");
+  r = r.replace(/\bsooh?\b/gi, "soo");
+  r = r.replace(/\b(?:sook|soo)\s*(?:kohn|kon)\b/gi, "suk kon");
+  r = r.replace(/\b(?:teh\s+)?(?:koht|kot)\s+tah?\b/gi, "te kot ta");
+  r = r.replace(/\b(?:eet|it)\s+tah?\b/gi, "it ta");
+  r = r.replace(/\b(?:eet|it)\s+teh?\b/gi, "it te");
+  // 2. 撥音（ん）の英語実在音節化（un de su, non de, kan kyo）
+  r = r.replace(/\bnn\b/gi, "un");
+  r = r.replace(/\bn\s+desu\b/gi, "un de su");
+  r = r.replace(/\bn\s+da\b/gi, "un da");
+  r = r.replace(/\bn\s+ka\b/gi, "un ka");
+  r = r.replace(/\bn\b/gi, "un");
+  r = r.replace(/\btte\b/gi, "te");
+  // 3. 孤立子音・孤立hの完全除去
   r = r.replace(/\s+h\b/gi, "");
-  // 3. すっこんでろの完全促音・撥音化
-  r = r.replace(/\b(?:sooh|soo)\s*kohn\b/gi, "sook kohn");
-  // 4. 単独の撥音「ん」（n）がアルファベット「エヌ」と誤読されるのを完全防止
-  r = r.replace(/\bn\s+desu\b/gi, "nn deh soo");
-  r = r.replace(/\bn\s+da\b/gi, "nn dah");
-  r = r.replace(/\bn\s+ka\b/gi, "nn kah");
-  r = r.replace(/\bn\b/gi, "nn");
-  // 5. 語頭・単独の「って」「こった」
-  r = r.replace(/\btte\b/gi, "teh");
-  r = r.replace(/\b(?:teh\s+)?kotta\b/gi, "teh koht tah");
+  r = r.replace(/\b([a-z]+)\s+([tkps])\s+([a-z]+)/gi, "$1$2 $3");
 
   r = r.replace(/[ \t]+/g, " ");
   return r;

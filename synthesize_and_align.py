@@ -90,22 +90,28 @@ def transliterate_syllables(romaji_word: str) -> str:
 
     while i < n:
         # 1. 促音検出（子音重複：kk, tt, ss, pp 等 ※nnは撥音）
-        # 直前の音節末尾に閉鎖音子音（Coda）を結合し、独立した孤立アルファベット（吃音・誤読）を防ぐ
+        # ★重要：英語に実在しない「ht」などの異常子音結合を防ぐため、直前音節末尾の長母音hを除去して純粋な短母音閉音節（CVC: kot, sook, eet）にする★
         if i + 1 < n and w[i] == w[i+1] and w[i] in 'bcdfghjklmpqrstvwxyz' and w[i] != 'n':
             coda_char = w[i]
             if tokens:
-                tokens[-1] = tokens[-1] + coda_char
+                prev = tokens[-1]
+                if prev.endswith('h'):
+                    prev = prev[:-1]
+                tokens[-1] = prev + coda_char
             i += 1
             continue
 
         # 2. 撥音検出（ん: n）
-        # 直前の音節末尾に鼻音n（Coda）を結合（nonde -> nohn deh, kankyou -> kahn kyoh）
+        # 直前音節の末尾'h'を除去して鼻音nを結合（例: non, kan, hon）
         if w[i] == 'n':
             if i + 1 == n or (w[i+1] not in 'aiueoy' and not (i + 2 <= n and w[i+1:i+3] in ['ya','yu','yo'])):
                 if tokens:
-                    tokens[-1] = tokens[-1] + 'n'
+                    prev = tokens[-1]
+                    if prev.endswith('h'):
+                        prev = prev[:-1]
+                    tokens[-1] = prev + 'n'
                 else:
-                    tokens.append('nn')
+                    tokens.append('un') # 英語に実在しない語頭nnではなく実在の感嘆詞un
                 i += 1
                 continue
 
@@ -239,21 +245,24 @@ def sanitize_whisper_phonetics(text: str) -> str:
     # ★一元フォニックス音節変換：残ったすべての未変換ローマ字単語を一網打尽に変換★
     r = apply_phonetic_transliteration(r)
 
-    # ★促音便・撥音便・孤立子音の完全撲滅・結合処理★
-    # 1. 孤立した促音子音（t, k, p, s）を直前の母音音節末尾（Coda）に結合（例: ee t tah -> eet tah）
-    r = re.sub(r'\b([a-z]+)\s+([tkps])\s+([a-z]+)', r'\1\2 \3', r, flags=re.IGNORECASE)
-    # 2. 誤爆した孤立hの完全除去（soo h -> soo）
+    # ★英語実在音節（Phonotactics）準拠：架空子音クラスタ（ht, 語頭nn等）の完全根絶★
+    # 1. 促音（っ）の英語実在音節化（kot ta, it ta, suk kon de ro, te kot ta）
+    r = re.sub(r'\bkoht\b', 'kot', r, flags=re.IGNORECASE)
+    r = re.sub(r'\bsooh?\b', 'soo', r, flags=re.IGNORECASE)
+    r = re.sub(r'\b(?:sook|soo)\s*(?:kohn|kon)\b', 'suk kon', r, flags=re.IGNORECASE)
+    r = re.sub(r'\b(?:teh\s+)?(?:koht|kot)\s+tah?\b', 'te kot ta', r, flags=re.IGNORECASE)
+    r = re.sub(r'\b(?:eet|it)\s+tah?\b', 'it ta', r, flags=re.IGNORECASE)
+    r = re.sub(r'\b(?:eet|it)\s+teh?\b', 'it te', r, flags=re.IGNORECASE)
+    # 2. 撥音（ん）の英語実在音節化（un de su, non de, kan kyo）
+    r = re.sub(r'\bnn\b', 'un', r, flags=re.IGNORECASE)
+    r = re.sub(r'\bn\s+desu\b', 'un de su', r, flags=re.IGNORECASE)
+    r = re.sub(r'\bn\s+da\b', 'un da', r, flags=re.IGNORECASE)
+    r = re.sub(r'\bn\s+ka\b', 'un ka', r, flags=re.IGNORECASE)
+    r = re.sub(r'\bn\b', 'un', r, flags=re.IGNORECASE)
+    r = re.sub(r'\btte\b', 'te', r, flags=re.IGNORECASE)
+    # 3. 孤立子音・孤立hの完全除去
     r = re.sub(r'\s+h\b', '', r, flags=re.IGNORECASE)
-    # 3. すっこんでろの完全促音・撥音化
-    r = re.sub(r'\b(?:sooh|soo)\s*kohn\b', 'sook kohn', r, flags=re.IGNORECASE)
-    # 4. 単独の撥音「ん」（n）がアルファベット「エヌ」と誤読されるのを完全防止
-    r = re.sub(r'\bn\s+desu\b', 'nn deh soo', r, flags=re.IGNORECASE)
-    r = re.sub(r'\bn\s+da\b', 'nn dah', r, flags=re.IGNORECASE)
-    r = re.sub(r'\bn\s+ka\b', 'nn kah', r, flags=re.IGNORECASE)
-    r = re.sub(r'\bn\b', 'nn', r, flags=re.IGNORECASE)
-    # 5. 語頭・単独の「って」「こった」
-    r = re.sub(r'\btte\b', 'teh', r, flags=re.IGNORECASE)
-    r = re.sub(r'\b(?:teh\s+)?kotta\b', 'teh koht tah', r, flags=re.IGNORECASE)
+    r = re.sub(r'\b([a-z]+)\s+([tkps])\s+([a-z]+)', r'\1\2 \3', r, flags=re.IGNORECASE)
 
     r = re.sub(r'[ \t]+', ' ', r)
     return r
