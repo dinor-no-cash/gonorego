@@ -49,33 +49,52 @@ const SCRIPT_GEN_PROMPT = `
 
 const ROMAJI_CONVERT_PROMPT = `
 あなたはmacOSの音声合成エンジン「say -v Whisper」専用のスクリプトエンジニアです。
-入力された日本語台本を行ごとに1対1で、Whisperが最も自然かつクールに発音できる表記に変換してください。
+Whisperは米語（米国英語）の音声合成エンジンです。英単語は英語のまま発音させるのが最も流暢で自然です。
+与えられた日本語台本を行ごとに1対1で、以下の厳格な規則に従って変換してください。
 
-【最重要ルール（英単語・カタカナ語は英語スペルにする）】
-1. カタカナ語や外来語（ワイン、マーケティング、サイゼリヤ、グラス、フルーツジュース、コスト、リスク、デカンタ、ストリーミング等）は、
-   無理にローマ字化せず【英語本来のスペル】（wine, marketing, Saizeriya, glass, fruit juice, cost, risk, decanter, streaming等）に置き換えてください！Whisperが自然な英語発音で喋ります。
+【最重要規則１：英単語は絶対にそのまま残す（ローマ字化禁止！）】
+台本内にすでに英単語として書かれている単語（例：Transformers, LLM, Docker, PHP, Python, AI, GPU, CPU, Web, Twitter, CVSS, WAF, Windows, Mac, Linux等）は、
+絶対にカタカナ読みローマ字（Toransufaamazu等）に変えず、【そのままの英単語（Transformers等）】として残してください！
 
-【最重要ルール（日本語の漢字読み・ゴノレゴ構文の厳格指定）】
-2. 以下のキーワードは指定の表記を厳守してください：
-   ・「小一時間」->「ko ichi jikan」（※sho ichi jikanは絶対禁止！）
-   ・「問い詰めたい」->「toi tsume tai」（※問くるめたい等の誤読禁止！）
-   ・「諸刃の剣」->「moroha no tsurugi」（※moro no yaibaは絶対禁止！）
-   ・「ブチ切れ」->「buchi kee reh」
-   ・「素人」->「shirouto」、「ド素人」->「do shirouto」（※sujin等の音読みは絶対禁止！）
-   ・「流行」->「ryuukou」（※この文脈は『りゅうこう』です。hayariは禁止！）
-   ・「１よ」->「ichi yo」
-   ・「通」->「tsuu」
-   ・「昨日」->「kino」
-   ・「ってこった」->「tte kotta」
-   ・「ボケが」->「boke gah」
-   ・「アホかと」->「aho kah toh」
-   ・「馬鹿かと」->「baka kah toh」
+【最重要規則２：カタカナ語・外来語は英語のスペルに置き換える】
+カタカナ語や外来語は、ヘボン式ローマ字ではなく【英語本来のスペル】に置き換えてください：
+・「ローカル」-> local
+・「コミュニティ」-> community
+・「チュートリアル」-> tutorial
+・「モデル」-> model
+・「ハードウェア」-> hardware
+・「ソフトウェア」-> software
+・「データセット」-> dataset
+・「カスタム」-> custom
+・「キュー」-> queue
+・「ワイン」-> wine
+・「マーケティング」-> marketing
+・「サイゼリヤ」-> Saizeriya
+・「グラス」-> glass
+・「フルーツジュース」-> fruit juice
+・「コスト」-> cost
+・「リスク」-> risk
+・「デカンタ」-> decanter
 
-【厳格なフォーマット規則】
-3. 入力の行数と出力の行数を【完全に一致（1対1対応）】させてください。空行や複数行結合は禁止です。
-4. すべての日本語（漢字・ひらがな）をローマ字または該当英単語に変換し、漢字やひらがなを一切残さないでください。
-5. 各行末にはピリオド（.）をつけてください。
-6. 解説やMarkdown引用符は含めず、変換後のテキストのみを出力してください。
+【最重要規則３：日本語（漢字・ひらがな）部分のみをヘボン式ローマ字にする】
+漢字の読み間違いを絶対にしないでください：
+・「小一時間」->「ko ichi jikan」（※sho ichi jikanは絶対禁止！）
+・「問い詰めたい」->「toi tsume tai」（※問くるめたい等の誤読禁止！）
+・「諸刃の剣」->「moroha no tsurugi」（※moro no yaibaは絶対禁止！）
+・「ブチ切れ」->「buchi kee reh」
+・「素人」->「shirouto」、「ド素人」->「do shirouto」（※sujin等の音読みは絶対禁止！）
+・「流行」->「ryuukou」（※この文脈は『りゅうこう』です。hayariは禁止！）
+・「１よ」->「ichi yo」
+・「通」->「tsuu」
+・「昨日」->「kino」
+・「ってこった」->「tte kotta」
+・「ボケが」->「boke gah」
+・「アホかと」->「aho kah toh」
+・「馬鹿かと」->「baka kah toh」
+
+【フォーマット規則】
+・入力の行数と出力の行数を完全に一致（1対1）させてください。
+・解説やMarkdownコードブロックは含めず、変換後のテキストのみを出力してください。
 `;
 
 // 台本から余計な解説文・末尾テキストを完全に切り落とすサニタイザー
@@ -138,45 +157,81 @@ function sanitizePhoneticRomaji(text: string): string {
     }
   }
 
-  // 決定論的置換テーブル（カタカナ語・英単語、および誤読頻出語の強制正規化）
+  // 決定論的置換テーブル（英単語保持・カタカナ語の英語スペル直通化・誤読撲滅）
   const fixMap: [RegExp, string][] = [
     // 冒頭の日本語残り防止
     [/そんな事より聞いてくれよ(?:１|1|一)?よ?/g, "sonna koto yori kiite kureyo ichi yo"],
     [/昨日/g, "kino"],
     [/サイゼリヤ/g, "Saizeriya"],
     [/サイゼ/g, "Saize"],
-    // 1. 英単語・カタカナ語は該当する英単語スペルへ統一
+
+    // ★重要：英単語のカタカナ化誤爆を英語スペルへ完全復元★
+    [/\b(?:toransufaamazu|toransufaamaa)\b/gi, "Transformers"],
+    [/トランスフォーマーズ?/g, "Transformers"],
+
+    // ★重要：カタカナ語・外来語を英語スペルへ置換（Whisperネイティブ発音）★
+    [/ローカル/g, "local"],
+    [/\b(?:rookaaru|rokaru|ro-karu)\b/gi, "local"],
+    [/コミュニティ/g, "community"],
+    [/\b(?:komyunitei|komyuniti)\b/gi, "community"],
+    [/チュートリアル/g, "tutorial"],
+    [/\b(?:chyuutoriaru|chuutoriaru)\b/gi, "tutorial"],
+    [/モデル/g, "model"],
+    [/\b(?:moderu|mode\s*ru)\b/gi, "model"],
+    [/ハードウェア/g, "hardware"],
+    [/\b(?:haado\s*uea|haadowea)\b/gi, "hardware"],
+    [/ソフトウェア/g, "software"],
+    [/\b(?:sofutouea|sofutowea)\b/gi, "software"],
+    [/データセット/g, "dataset"],
+    [/\b(?:deeta\s*setto)\b/gi, "dataset"],
+    [/カスタム/g, "custom"],
+    [/\b(?:kasutamu)\b/gi, "custom"],
+    [/キュー/g, "queue"],
+    [/\b(?:kyuu)\b/gi, "queue"],
+    [/ワイン/g, "wine"],
     [/\b(?:wain|wah\s*een)\b/gi, "wine"],
+    [/マーケティング/g, "marketing"],
     [/\b(?:maketingu)\b/gi, "marketing"],
+    [/グラス/g, "glass"],
     [/\b(?:gurasu)\b/gi, "glass"],
+    [/デカンタ/g, "decanter"],
     [/\b(?:dekanta)\b/gi, "decanter"],
+    [/コスト/g, "cost"],
     [/\b(?:kosuto)\b/gi, "cost"],
+    [/リスク/g, "risk"],
     [/\b(?:risuku)\b/gi, "risk"],
+    [/フルーツジュース/g, "fruit juice"],
     [/\b(?:furu-tsu\s*ju-su|furuutsu\s*juusu)\b/gi, "fruit juice"],
+    [/カベルネ・ソーヴィニヨン/g, "Cabernet Sauvignon"],
     [/\b(?:kaberune\s*so-viniyon|kabuerune\s*souviniyon)\b/gi, "Cabernet Sauvignon"],
+    [/ビオディナミック/g, "biodynamic"],
     [/\b(?:biodinamikku)\b/gi, "biodynamic"],
-    // 2. 「問い詰めたい」の誤読排除（問くるめたい等を完全防止）
+    [/エンジニア/g, "engineer"],
+    [/セキュリティ/g, "security"],
+
+    // ★重要：日本語の読み間違い・ゴノレゴ構文の厳格固定★
+    // 1. 「問い詰めたい」の誤読排除（問くるめたい等を完全防止）
     [/\b(?:toikurumetai|toitsumetai|toishimetai|toi\s*tsume\s*tai)\b/gi, "toi tsume tai"],
     [/問(?:い)?(?:詰|くる)めたい/g, "toi tsume tai"],
-    // 3. 「小一時間」の誤読排除（sho ichi jikan等を完全防止）
+    // 2. 「小一時間」の誤読排除（sho ichi jikan等を完全防止）
     [/\b(?:sho\s*ichi\s*jikan|shoichijikan|shouichijikan|ko\s*ichi\s*jikan|koichijikan)\b/gi, "ko ichi jikan"],
     [/小一時間/g, "ko ichi jikan"],
-    // 4. 「諸刃の剣」の誤読排除（moro no yaiba等を完全防止）
+    // 3. 「諸刃の剣」の誤読排除（moro no yaiba等を完全防止）
     [/\b(?:moro\s*no\s*yaiba|moronoyaiba|moroha\s*no\s*tsurugi|morohanotsurugi)\b/gi, "moroha no tsurugi"],
     [/諸刃の(?:剣|刃)/g, "moroha no tsurugi"],
-    // 5. 「ブチ切れ」の正確な発音保証
+    // 4. 「ブチ切れ」の正確な発音保証
     [/\b(?:buchikire|buchi\s*kire|buchikeereh|buchi\s*kee\s*reh)\b/gi, "buchi kee reh"],
     [/(?:ブチ|ぶち)(?:切|き)れ/g, "buchi kee reh"],
-    // 6. 「素人」「ド素人」の誤読排除（sujin等の音読みを完全撲滅）
+    // 5. 「素人」「ド素人」の誤読排除（sujin等の音読みを完全撲滅）
     [/\b(?:do\s*sujin|doshirouto|do\s*shirouto|doh\s*shee\s*roh\s*oo\s*toh)\b/gi, "do shirouto"],
     [/\b(?:sujin|shirouto|shee\s*roh\s*oo\s*toh)\b/gi, "shirouto"],
     [/ド素人/g, "do shirouto"],
     [/素人/g, "shirouto"],
-    // 7. 「流行」はこの文脈では「りゅうこう」
+    // 6. 「流行」はこの文脈では「りゅうこう」
     [/\b(?:hayari|hayarin|ryuukou|ryoukou)\b/gi, "ryuukou"],
     [/最新流行/g, "saishin ryuukou"],
     [/流行/g, "ryuukou"],
-    // 8. 「通」
+    // 7. 「通」
     [/\b(?:tsu)\b/gi, "tsuu"],
     [/ワイン通/g, "wine tsuu"],
     [/通/g, "tsuu"],
@@ -186,6 +241,7 @@ function sanitizePhoneticRomaji(text: string): string {
     [/\bboke\s*ga\b/gi, "boke gah"],
     [/\baho\s*ka\s*to\b/gi, "aho kah toh"],
     [/\bbaka\s*ka\s*to\b/gi, "baka kah toh"],
+
     // 日本語ローマ字が英語フォニックスでサイレントE誤読される問題の防止
     [/\bmade\b/gi, "mah deh"],
     [/\bmake\b/gi, "mah keh"],
