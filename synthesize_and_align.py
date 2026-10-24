@@ -69,6 +69,29 @@ def sanitize_whisper_phonetics(text: str) -> str:
         (r'\b(?:hayari|hayarin)\b', "ryuukou"),
         (r'\b(?:tte\s+)?kotta\b', "tte kotta"),
         (r'\bichi\s*yo\b', "ichi yo"),
+
+        # ★重要：「開発」の誤読（けいはつ）防止★
+        (r'\bkeihatsu\b', "kaihatsu"),
+        (r'開発', "kaihatsu"),
+
+        # ★最重要：助詞の英語略称・フォニックス誤読の機械的撲滅★
+        # 「が」がジョージア州GA「ジー・エー」になるのを完全排除
+        (r'\bga\b', "gah"),
+        # 「は」
+        (r'\bha\b', "wah"),
+        (r'\bwa\b', "wah"),
+        # 「で」がデラウェア州DE「ディー・イー」になるのを完全排除
+        (r'\bde\b', "deh"),
+        # 「だ」
+        (r'\bda\b', "dah"),
+        # 「と」が前置詞to「トゥー」になるのを防止
+        (r'\bto\b', "toh"),
+        # 「の」がno「ノー」になるのを防止
+        (r'\bno\b', "noh"),
+        # 「も」がミズーリ州MO「エム・オー」になるのを防止
+        (r'\bmo\b', "moh"),
+        # 「へ」が英語he「ヒー」になるのを防止
+        (r'\bhe\b', "eh"),
     ]
 
     for pat, rep in word_map:

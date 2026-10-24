@@ -76,6 +76,12 @@ Whisperは米語（米国英語）エンジンです。日本語をそのまま�
 ・「諸刃の剣」->「moroha no tsurugi」
 ・「ブチ切れ」->「buchi kee reh」
 ・「最新流行」->「saishin ryuukou」
+・「開発」->「kaihatsu」（※keihatsu/けいはつ等の誤読絶対禁止！）
+・助詞「が」->「gah」（※gaと書くとジョージア州GA「ジー・エー」と誤読されます！必ずgahと書くこと！）
+・助詞「は」->「wah」
+・助詞「で」->「deh」
+・助詞「と」->「toh」
+・助詞「の」->「noh」
 ・「ってこった」->「tte kotta」
 
 【変換の手本（Few-Shot Example）】
@@ -89,7 +95,7 @@ Whisperは米語（米国英語）エンジンです。日本語をそのまま�
 出力：
 sonna koto yori kiite kure yo ichi yo. kino, local LLM no kaihatsu community itta n desu.
 mou mee teh rahn nye. tsukatte mee teh doh dah tah kah kiite mee tai.
-tonari no yatsu ga, toriaezu Transformers de, toka itte ru n desu. soko de mata buchi kee reh desu yo.
+tonari no yatsu gah, toriaezu Transformers deh, toh ka itte ru n desu. soh koh deh mata buchi kee reh desu yo.
 ko ichi jikan toi tsume tai. moroha no tsurugi. shee roh oo toh ni wa osusume shi nai.
 maa oh mah eh rah do shee roh oo toh wa, pre-trained model no parameter demo nah gah meh teh nah sigh tte kotta.
 
@@ -218,6 +224,29 @@ function sanitizePhoneticRomaji(text: string): string {
     [/\b(?:hayari|hayarin)\b/gi, "ryuukou"],
     [/\b(?:tte\s+)?kotta\b/gi, "tte kotta"],
     [/\bichi\s*yo\b/gi, "ichi yo"],
+
+    // ★重要：「開発」の誤読（けいはつ）防止★
+    [/\bkeihatsu\b/gi, "kaihatsu"],
+    [/開発/g, "kaihatsu"],
+
+    // ★最重要：助詞の英語略称・フォニックス誤読の機械的撲滅★
+    // 「が」がジョージア州GA「ジー・エー」になるのを完全排除
+    [/\bga\b/gi, "gah"],
+    // 「は」
+    [/\bha\b/gi, "wah"],
+    [/\bwa\b/gi, "wah"],
+    // 「で」がデラウェア州DE「ディー・イー」になるのを完全排除
+    [/\bde\b/gi, "deh"],
+    // 「だ」
+    [/\bda\b/gi, "dah"],
+    // 「と」が前置詞to「トゥー」になるのを防止
+    [/\bto\b/gi, "toh"],
+    // 「の」がno「ノー」になるのを防止
+    [/\bno\b/gi, "noh"],
+    // 「も」がミズーリ州MO「エム・オー」になるのを防止
+    [/\bmo\b/gi, "moh"],
+    // 「へ」が英語he「ヒー」になるのを防止
+    [/\bhe\b/gi, "eh"],
   ];
 
   for (const [pattern, replacement] of phonicsFixes) {
